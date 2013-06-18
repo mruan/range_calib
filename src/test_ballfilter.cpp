@@ -1,3 +1,7 @@
+/*
+This one works better with background subtracted data
+*/
+
 #include <iostream>
 
 #include "ball_filter.hpp"

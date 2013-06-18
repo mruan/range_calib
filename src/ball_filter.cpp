@@ -16,6 +16,12 @@ const std::vector<bool>& BallFilter::GetMask()
   return _flt_mask;
 }
 
+inline double getDiff(double x, double y, double z, double r)
+{
+  return sqrt(dx*dx+dy*dy+dz*dz) - _radius;
+  //  return dx*dx + dy* dy + dz* dz - _radius * _radius;
+}
+
 bool BallFilter::ApplyFilter()
 {
   double cx, cy, cz; // center of sphere
@@ -52,7 +58,7 @@ bool BallFilter::ApplyFilter()
 	  dy = q.y - cy;
 	  dz = q.z - cz;
 
-	  double diff = sqrt(dx*dx+dy*dy+dz*dz) - _radius;
+	  double diff = getDiff(dx, dy, dz, _radius);
 	  if (fabs(diff) < _err)
 	    this_count++;
 	}
@@ -90,7 +96,8 @@ bool BallFilter::ApplyFilter()
       dy = q.y - cy;
       dz = q.z - cz;
       
-      double diff = sqrt(dx*dx+dy*dy+dz*dz) - _radius;
+      double diff = getDiff(dx, dy, dz, _radius);
+	//sqrt(dx*dx+dy*dy+dz*dz) - _radius;
       if (fabs(diff) < _err)
 	_flt_mask[j] = true;
     }
