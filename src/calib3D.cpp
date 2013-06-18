@@ -22,13 +22,15 @@ public:
 
     AddResidualBlock(cf, lf, camera, camera+4, P);
 
-    if (FLAGS_use_quaternions && FLAGS_use_local_parameterization) {
-      LocalParameterization* quaternion_parameterization =
-	new QuaternionParameterization;
-      for (int i = 0; i < bal_problem->num_cameras(); ++i) {
-	problem->SetParameterization(cameras + camera_block_size * i,
-				     quaternion_parameterization);
-    }
-  }
+    if (FLAGS_use_quaternions && FLAGS_use_local_parameterization)
+      {
+	LocalParameterization* quaternion_parameterization =
+	  new QuaternionParameterization;
+	for (int i = 0; i < bal_problem->num_cameras(); ++i) 
+	  {
+	    problem->SetParameterization(cameras + camera_block_size * i,
+					 quaternion_parameterization);
+	  }
+      }
   }
 };
