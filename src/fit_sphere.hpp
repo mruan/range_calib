@@ -1,105 +1,130 @@
 
 #include <ceres/ceres.h>
+#include <unistd.h>
 
 using ceres::CostFunction;
+using ceres::SizedCostFunction;
 using ceres::Problem;
 using ceres::Solve;
 using ceres::Solver;
 
-class DirectionalCostFunction
-  :public SizedCostFunction<1, 3>
+class RayCostFunction:public SizedCostFunction<1, 3>
 {
 public:
-  RayCostFunction(double x, double y, double z)
-    :_x(x), _y(y), _z(z){}
+  RayCostFunction(double xj, double yj, double zj)
+  {
+    r  = sqrt(xj*xj+yj*yj+zj*zj);// + 1e-5
+    x  = xj / r;
+    y  = yj / r;
+    z  = zj / r;
+    //    printf("r= %lf x=%lf y=%lf z=%lf\n", r, x, y, z);
+  }
 
   virtual ~RayCostFunction(){}
 
   virtual bool Evaluate(double const* const* params,
 			double* res, double** jac) const
   {
-    double& cx = params[0][0];
-    double& cy = params[0][1];
-    double& cz = params[0][2];
+    const double& X = params[0][0];
+    const double& Y = params[0][1];
+    const double& Z = params[0][2];
 
-    double nr  = sqrt(_x*_x+_y*_y+_z*_z);
-    double ux  = _x / nrm;
-    double uy  = _y / nrm;
-    double uz  = _z / nrm;
+    double p   = X*x + Y*y + Z*z;
+    double q2  = pow(y*Z-z*Y,2)+pow(z*X-x*Z,2)+pow(x*Y-y*X,2);
+    double q   = sqrt(q2);
 
-    double p   = cx * ux + cy * uy + cz * uz;
-    double q2  = pow(uy*cz-uz*cy,2)+pow(uz*cx-ux-cz,2)+pow(ux*cy-uy*cx,2);
-    double q   = sqrt(q);
-
-    if (q < s_radius)
-      res[0] = p - sqrt(s_radius*s_radius - q2) - nr;
+    if (q < R)
+      res[0] = p - sqrt(R*R - q2) - r;
     else
-      res[0] = sqrt((p-nr)*(p-nr) + (q-s_radius)*(q-s_radius));
+      res[0] = sqrt((p-r)*(p-r) + (q-R)*(q-R));
 
     if (jac != NULL && jac[0] != NULL)
       {
-	if (q < s_radius)
+	if (q < R)
 	  {
-	    double denom = sqrt(s_radius*s_radius-q2);
-	    jac[0][0] = ux + (cx-ux*p)/denom;
-	    jac[0][1] = uy + (cy-uy*p)/denom;
-	    jac[0][2] = uz + (cz-uz*p)/denom;
+	    double denom = sqrt(R*R - q2);
+	    jac[0][0] = x + (X - x*p) /denom;
+	    jac[0][1] = y + (Y - y*p) /denom;
+	    jac[0][2] = z + (Z - z*p) /denom;
 	  }
 	else
 	  {
-	    double pr = p-nr;
-	    double qR = 1 - s_radius /q;
-	    jac[0][0] = (pr*ux+ qR*(cx-ux*p))/res[0];
-	    jac[0][1] = (pr*uy+ qR*(cy-uy*p))/res[0];
-	    jac[0][2] = (pr*uz+ qR*(cz-uz*p))/res[0];
+	    double pr = p - r;
+	    double qR = 1 - R/q;
+	    jac[0][0] = (pr * x + qR *(X - x*p))/res[0];
+	    jac[0][1] = (pr * y + qR *(Y - y*p))/res[0];
+	    jac[0][2] = (pr * z + qR *(Z - z*p))/res[0];
 	  }
       }
+
+    // TODO: This printf() has to be there in order to prevent numerical failure
+    // It's a strange bug that might need a semaphore.
+    printf(" ");
+    //    printf("%lf %lf %lf, %lf %lf, %lf\n", X, Y,Z, p, q, res[0]);
   }
 
-  static double s_radius;
-
+  static void SetRadius(double radius) { R = radius;}
+  static double R;
 private:
-  const double _x;
-  const double _y;
-  const double _z;
+  double r;
+  double x, y, z;// x, y, z are normalized
 };
 
 class SphereFitter
 {
 public:
-  SphereFitter(double r = 0.1275)
+  SphereFitter(double x=0, double y=0, double z=0)
   {
+    // Initial guesses
+    _center[0] = x;
+    _center[1] = y;
+    _center[2] = z;
+
     _options.max_num_iterations = 25;
     _options.linear_solver_type = ceres::DENSE_QR;
     _options.minimizer_progress_to_stdout = true;
-
-    DirectionalCostFunction::s_radius = r;
   }
 
-  template<typename PointT>
-  void SetPointCloud(pcl::PointCloud<PointT>::Ptr cloud)
+  typedef pcl::PointXYZ T;
+  void SetInputCloud(pcl::PointCloud<T>::Ptr cloud)
   {
     for (int i=0; i < cloud->points.size(); i++)
       {
-	PointT& p = cloud->points[i];
-	_problem.AddResidualBlock(new DirectionalCostFunction(p.x, p.y, p.z), 
-				  NULL, &cx, &cy, &cz);
+	T& p = cloud->points[i];
+	_problem.AddResidualBlock(new RayCostFunction(p.x, p.y, p.z), 
+				  NULL, &_center[0]);
       }
   }
 
-  bool FitSphere(double x, double y, double z)
+  //  template<typename T>
+  void SetInputCloud(pcl::PointCloud<T>::Ptr cloud, const std::vector<bool>& mask)
   {
-    Solve(options, &problem, &summary);
+    for (int i=0; i < cloud->points.size(); i++)
+      {
+	if (!mask[i])
+	  continue;
 
-    x = cx;
-    y = cy;
-    z = cz;
+	T& p = cloud->points[i];
+	_problem.AddResidualBlock(new RayCostFunction(p.x, p.y, p.z), 
+				  NULL, &_center[0]);
+      }
+    //    _problem.AddParameterBlock(_center, 3);
+  }
+
+  bool FitSphere(double& x, double& y, double& z)
+  {
+    Solve(_options, &_problem, &_summary);
+
+    std::cout << _summary.BriefReport() << std::endl;
+    x = _center[0];
+    y = _center[1];
+    z = _center[2];
     return true;
   }
 
 private:
-  double cx, cy, cz;
-  Solver::Options _option;
+  double _center[3];
+  Solver::Options _options;
   Solver::Summary _summary;
   Problem _problem;
 };

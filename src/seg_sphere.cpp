@@ -15,7 +15,6 @@
 */
 
 #include <iostream>
-#include <algorithm> // for std::sort
 
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
@@ -28,6 +27,8 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <boost/thread/thread.hpp>
 
+#include "pcl_utils.hpp"
+
 boost::shared_ptr<pcl::visualization::PCLVisualizer> 
 SetupViewer(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud,
 	    pcl::ModelCoefficients::Ptr coeff);
@@ -35,15 +36,6 @@ bool SegSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 	       double threshold,
 	       pcl::PointIndices::Ptr inlier,
 	       pcl::ModelCoefficients::Ptr coeff);
-void ColorizePts(pcl::PointCloud<pcl::PointXYZ>::ConstPtr input,
-		 pcl::PointIndices::Ptr inlierIdx,
-		 pcl::PointCloud<pcl::PointXYZRGB>::Ptr output);
-
-uint32_t red = (static_cast<uint32_t>(255) << 16 |
-		static_cast<uint32_t>(0) << 8 | static_cast<uint32_t>(0));
-
-uint32_t blue= (static_cast<uint32_t>(0) << 16 |
-		static_cast<uint32_t>(0) << 8 | static_cast<uint32_t>(255));
 
 /*******************************************************
                  Main
@@ -75,8 +67,7 @@ int main(int argc, char** argv)
     return -1;
 
   // Separate and colorize inliers and outliers
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr clr_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-  ColorizePts(cloud, inlierIdx, clr_cloud);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr clr_cloud = ColorizeCloud(cloud, inlierIdx);
 
   // Display the final result
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
@@ -108,43 +99,6 @@ SetupViewer(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud,
   viewer->addSphere(*coeff);
 
   return (viewer);
-}
-
-void ColorizePts(pcl::PointCloud<pcl::PointXYZ>::ConstPtr input,
-		 pcl::PointIndices::Ptr inlierIdx,
-		 pcl::PointCloud<pcl::PointXYZRGB>::Ptr output)
-{
-  output->points.resize(input->points.size());
-
-  //  uint8_t r(255), g(15), b(15);
-  
-  // pack r/g/b into rgb
-  int red = ((int)255) << 16 | ((int)0) << 8 | ((int)0);
-  int blue= ((int)0)   << 16 | ((int)0) << 8 | ((int)255);
-
-  int numInlier = 0, numOutlier = 0;
-  // In case it wasn't sorted
-  std::sort(inlierIdx->indices.begin(), inlierIdx->indices.end());
-  size_t j=0;
-  for(size_t i=0; i< input->points.size(); ++i)
-    {
-      if (i==inlierIdx->indices[j])
-	{
-	  output->points[i].rgb = *reinterpret_cast<float*>(&red);
-	  ++j;
-	  numInlier++;
-	}
-      else
-	{
-	  output->points[i].rgb = *reinterpret_cast<float*>(&blue);
-	  numOutlier++;
-	}
-      
-      output->points[i].x = input->points[i].x;
-      output->points[i].y = input->points[i].y;
-      output->points[i].z = input->points[i].z;
-    }
-  std::cout << "Num inliers="<< numInlier << ", Num outliers="<< numOutlier<<std::endl;
 }
 
 bool SegSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,

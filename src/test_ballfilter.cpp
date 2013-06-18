@@ -5,11 +5,19 @@ This one works better with background subtracted data
 #include <iostream>
 
 #include "ball_filter.hpp"
+#include "fit_sphere.hpp"
+#include "pcl_utils.hpp"
+#include "glog/logging.h"
 
 #include <boost/thread/thread.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+double RayCostFunction::R = 0.1275;
+
+/******************************************************************
+                           Main Function
+ *****************************************************************/
 int main(int argc, char** argv)
 {
   if (argc <2)
@@ -17,6 +25,8 @@ int main(int argc, char** argv)
       PCL_ERROR("Usage: %s <input.pcd> \n", argv[0]);
       return -1;
     }
+
+  google::InitGoogleLogging(argv[0]);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -26,7 +36,7 @@ int main(int argc, char** argv)
       return -1;
     }
   
-  BallFilter bf(0.128, 0.03, cloud->width, cloud->height);
+  BallFilter bf(0.128, 0.03);
   bf.SetInputPCL(cloud);
   if (!bf.ApplyFilter())
     {
@@ -36,32 +46,25 @@ int main(int argc, char** argv)
 
   // Colorize points
   const std::vector<bool>& mask = bf.GetMask();
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr ccl(new pcl::PointCloud<pcl::PointXYZRGB>);
-  ccl->points.resize(mask.size());
-
-  // pack r/g/b into rgb
-  int red = ((int)255) << 16 | ((int)0) << 8 | ((int)0);
-  int blue= ((int)0)   << 16 | ((int)0) << 8 | ((int)255);
-
-  int inlier = 0;
-  for(int i=0; i< mask.size(); ++i)
-    {
-      if (mask[i])
-	{
-	  ccl->points[i].rgb = *reinterpret_cast<float*>(&red);
-	  inlier++;
-	}
-      else
-	{
-	  ccl->points[i].rgb = *reinterpret_cast<float*>(&blue);
-	}
-      ccl->points[i].x = cloud->points[i].x;
-      ccl->points[i].y = cloud->points[i].y;
-      ccl->points[i].z = cloud->points[i].z;
-    }
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr ccl = ColorizeCloud(cloud, mask);
   
   //  std::cout<< "Num of inliers " << inlier << std::endl;
-
+  
+  // Try to fit a sphere:
+  double x, y, z;
+  bf.GetCenter(x, y, z); // get initial guess
+ 
+  SphereFitter sf(x, y, z);
+  sf.SetInputCloud(cloud, mask);
+  double cx, cy, cz;
+  if (!sf.FitSphere(cx, cy, cz))
+    {
+      PCL_ERROR("failed to solve the problem\n");
+      return -1;
+    }
+  printf("Initial guess is [%8.5lf, %8.5lf, %8.5lf]\n",x, y, z);
+  printf("Final answer is  [%8.5lf, %8.5lf, %8.5lf]\n",cx, cy, cz);
+  
   pcl::visualization::PCLVisualizer viewer("3D Viewer");
   // black background
   viewer.setBackgroundColor (0, 0, 0);
@@ -70,6 +73,7 @@ int main(int argc, char** argv)
   viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
   viewer.addCoordinateSystem (0.2);
   viewer.initCameraParameters ();
+  viewer.addSphere(pcl::PointXYZ(cx, cy, cz), 0.1275, 0.0, 1.0, 0.0);
   //  viewer.setCameraPosition(0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
   
   while(!viewer.wasStopped())
@@ -77,4 +81,5 @@ int main(int argc, char** argv)
       viewer.spinOnce(100);
       boost::this_thread::sleep(boost::posix_time::microseconds(100000));
     }
+  return 0;
 }
