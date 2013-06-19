@@ -32,5 +32,8 @@ target_link_libraries (show_pcd ${PCL_LIBRARIES})
 add_executable (test_ballfilter src/test_ballfilter.cpp)
 target_link_libraries (test_ballfilter ${PCL_LIBRARIES} ${CERES_LIBRARIES})
 
+add_executable (calib3D src/calib3D.cpp)
+target_link_libraries (calib3D ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+
 #add_executable (downsample src/downsample.cpp)
 #target_link_libraries (downsample ${PCL_LIBRARIES})

@@ -2,6 +2,9 @@
 #ifndef ERROR_MODELS_H
 #define ERROR_MODELS_H
 
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
+
 // Templated range sensor model for use with Ceres.
 // The camera is parameterized using 7 parameters: 4 for rotation+ 3 for translation
 // i.e. only the extrinsics are being optimized.
@@ -24,9 +27,9 @@ struct Euclidean3DError
     p[1] += cam_tran[1];
     p[2] += cam_tran[2];
 
-    residual[0] = p[0] - T(_ox);
-    residual[1] = p[1] - T(_oy);
-    residual[2] = p[2] - T(_oz);
+    residuals[0] = p[0] - T(_ox);
+    residuals[1] = p[1] - T(_oy);
+    residuals[2] = p[2] - T(_oz);
     return true;
   }
 
