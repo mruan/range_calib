@@ -54,9 +54,7 @@ namespace BlobExtraction{
 
       std::vector<pcl::PointIndices>::iterator it = cluster_idx.begin();
       std::vector<pcl::PointIndices>::iterator best_it = cluster_idx.end();
-      double this_score = 1e3;
-      double best_score = 1e4;
-      
+      double this_score = 0.0, best_score = 0.0;
       double x, y, z;
       int j=0;
       while(it != cluster_idx.end())
@@ -75,7 +73,8 @@ namespace BlobExtraction{
 	  //	  pcl::io::savePCDFileASCII(outfile, *cloud_cluster);
 	  
 	  this_score = ball_score_fn(cloud_cluster, x, y, z);
-	  if (this_score < best_score)
+	  printf("cluster %d, score= %f\n", j++, this_score);
+	  if (this_score > best_score)
 	    {
 	      best_it = it;
 	      best_score = this_score;
@@ -89,6 +88,8 @@ namespace BlobExtraction{
 	  printf("Failed to find a good blob that meet the criteria\n");
 	  return false;
 	}
+
+      printf("Best score is %f\n", best_score);
 
       SphereFitter sf(cx, cy, cz);// set initial guess
       sf.SetInputCloud(raw_cloud, best_it->indices);
