@@ -20,10 +20,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <vector>
 
 // PCL stuff
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 // For background subtraction
 #include "bg_sub.hpp"
@@ -31,7 +33,55 @@
 using namespace std;
 typedef pcl::PointXYZ PointType;
 typedef pcl::PointCloud<PointType> CloudType;
+/*
+CloudType::Ptr OctreeFilter(CloudType::Ptr bg, CloudType::Ptr raw)
+{
+  CloudType::Ptr fg;
+  // Build octree with 50cm resolution
+  BGS::OctreeFilter bgs(0.2f);
+  bgs.SetBackgroundCloud(bg);
 
+  fg = bgs.GetForeGroundCloud(raw);
+  cout<< fg->points.size() <<" out of " << raw->points.size() <<" remains.\n";
+  return fg;
+}
+
+// Image based filter
+CloudType::Ptr ImageFilter(CloudType::Ptr bg, CloudType::Ptr raw)
+{
+  double eps = 1e-2; // should it scale with distance?
+
+  std::vector<bool> mask(raw->points.size(), 0);
+
+  assert(raw->points.size() == bg->points.size());
+  int count = 0;
+  for(int i=0; i< mask.size(); ++i)
+    {
+      PointType pb = bg->points[i];
+      PointType pf = raw->points[i];
+
+      if (pf.z < pb.z *(1- pb.z * eps))
+	{
+	  mask[i] = 1;
+	  count++;
+	}
+    }
+
+  //  printf("Foregound %d out of %d\n", count, mask.size());
+  // Create the foreground point cloud
+  CloudType::Ptr fg (new CloudType);
+  fg->width = count;
+  fg->height = 1;
+  fg->points.resize(count);
+  int j=0;
+  for (int i=0; i< mask.size(); ++i)
+    {
+      if(mask[i])
+	fg->points[j++] = raw->points[i];
+    }
+  return fg;
+}
+*/
 int main(int argc, char** argv)
 {
   if (argc< 3)
@@ -41,7 +91,7 @@ int main(int argc, char** argv)
     }
 
   // Load PCD file:
-  CloudType::Ptr bg (new CloudType), raw(new CloudType), fg;
+  CloudType::Ptr bg (new CloudType), raw(new CloudType);
 
   if (pcl::io::loadPCDFile<PointType> (argv[1], *bg) == -1 ||
       pcl::io::loadPCDFile<PointType> (argv[2], *raw) == -1)
@@ -50,15 +100,21 @@ int main(int argc, char** argv)
       return (-1);
     }
 
-  // Build octree with 1cm resolution
-  BackgroundSubtractor bgs(0.5f);
-  bgs.SetBackgroundCloud(bg);
-
-  fg = bgs.GetForeGroundCloud(raw);
-  cout<< fg->points.size() <<" out of " << raw->points.size() <<" remains.\n";
-
+  // Imagebased background subtraction
+  CloudType::Ptr fg;// = ImageFilter(bg, raw);
+  //  CloudType::Ptr fg = OctreeFilter(bg, raw);
+  
+  // Create the filtering object
+  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+  sor.setInputCloud (fg);
+  sor.setMeanK (50);
+  sor.setStddevMulThresh (1.0);
+  CloudType::Ptr fgfiltered(new CloudType);
+  sor.filter (*fgfiltered);  
+ 
+  //  printf("Done filtering\n");
   char outfile[64];
   argv[2][strlen(argv[2])-4] = '\0';
   sprintf(outfile, "fg_%s.pcd", argv[2]);
-  pcl::io::savePCDFileASCII(outfile, *fg);
+  pcl::io::savePCDFileASCII(outfile, *fgfiltered);
 }

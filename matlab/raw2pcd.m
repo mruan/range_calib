@@ -8,11 +8,12 @@
 clear % clear variables in current workspace
 
 % Change the file name accordingly
-filename = 'sr0.txt'; % This file must exist in current directory
-data = dlmread(filename);
+path = '../data/';
+filename = 'sr1.txt'; % This file must exist in current directory
+data = dlmread(strcat(path, filename));
 
 % Some sensor specific data, change accordingly
-sensor = 'sr0';
+sensor = 'sr1';
 width  = 176;
 height = 144;
 stride = width*height;
@@ -21,7 +22,7 @@ stride = width*height;
 [row, col] = size(data);
 num_frames = int32(row/stride);
 for i=1:num_frames
-    name = sprintf('%s_%u.pcd', sensor, i-1);
+    name = sprintf('%s%s_%u.pcd', path, sensor, i-1);
     fileID = fopen(name,'w');
     
     % Print pcd file header (metadata)

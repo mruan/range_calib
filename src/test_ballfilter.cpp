@@ -13,7 +13,48 @@ This one works better with background subtracted data
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+
 double RayCostFunction::R = 0.1275;
+
+bool SegSphere(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+	       double threshold,
+	       pcl::PointIndices::Ptr inlier,
+	       pcl::ModelCoefficients::Ptr coeff)
+{
+  //  pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients());
+  //  pcl::PointIndices::Ptr inlier(new pcl::PointIndices());
+
+  //Create the segmentation object
+  pcl::SACSegmentation<pcl::PointXYZ> seg;
+  // Optional
+  seg.setOptimizeCoefficients(true);
+  // Mandatory
+  seg.setModelType(pcl::SACMODEL_SPHERE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setMaxIterations(1000);
+  seg.setDistanceThreshold(threshold);
+  // Diameter from 25.3cm to 25.5 cm
+  seg.setRadiusLimits(0.12, 0.13);
+
+  // Segment the largest spherical component from the remaining cloud
+  seg.setInputCloud(cloud);
+  seg.segment(*inlier, *coeff);
+
+  bool flag = true;
+  /*
+  if(inlier->indices.size() ==0)
+    {
+      std::cerr<<"Could not estimate a spherical model at threshold "<< threshold<< " for the given dataset."<<std::endl;
+      flag = false;
+    }
+  */
+  std::cout <<"Threshold at " << threshold << " Coeffs: " << coeff->values[0] << " " << coeff->values[1] << " "<< coeff->values[2] << " "<< coeff->values[3] << std::endl;
+  return flag;
+}
 
 /******************************************************************
                            Main Function
@@ -48,14 +89,13 @@ int main(int argc, char** argv)
   const std::vector<bool>& mask = bf.GetMask();
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr ccl = ColorizeCloud(cloud, mask);
   
-  //  std::cout<< "Num of inliers " << inlier << std::endl;
-  
-  // Try to fit a sphere:
+   // Try to fit a sphere:
   double x, y, z;
   bf.GetCenter(x, y, z); // get initial guess
  
   SphereFitter sf(x, y, z);
   sf.SetInputCloud(cloud, mask);
+
   double cx, cy, cz;
   if (!sf.FitSphere(cx, cy, cz))
     {
@@ -83,3 +123,18 @@ int main(int argc, char** argv)
     }
   return 0;
 }
+
+/*
+
+  pcl::PointIndices::Ptr inlierIdx (new pcl::PointIndices ());
+  pcl::ModelCoefficients::Ptr coeff (new pcl::ModelCoefficients ());
+  double threshold = 0.005;
+  if (!SegSphere(cloud, threshold, inlierIdx, coeff))
+    return -1;
+
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr ccl = ColorizeCloud(cloud, inlierIdx);
+
+  double x = coeff->values[0], y = coeff->values[1], z = coeff->values[2];
+  SphereFitter sf(x, y, z);
+  sf.SetInputCloud(cloud, inlierIdx->indices);
+*/

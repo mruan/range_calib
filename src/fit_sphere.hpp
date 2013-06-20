@@ -111,6 +111,18 @@ public:
     //    _problem.AddParameterBlock(_center, 3);
   }
 
+  //  template<typename T>
+  void SetInputCloud(pcl::PointCloud<T>::Ptr cloud, const std::vector<int>& inlier)
+  {
+    for (int i=0; i < inlier.size(); i++)
+      {
+	T& p = cloud->points[inlier[i]];
+	_problem.AddResidualBlock(new RayCostFunction(p.x, p.y, p.z), 
+				  NULL, &_center[0]);
+      }
+    //    _problem.AddParameterBlock(_center, 3);
+  }
+
   bool FitSphere(double& x, double& y, double& z)
   {
     Solve(_options, &_problem, &_summary);
