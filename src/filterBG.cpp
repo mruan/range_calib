@@ -101,9 +101,10 @@ int main(int argc, char** argv)
     }
 
   // Imagebased background subtraction
-  CloudType::Ptr fg;// = ImageFilter(bg, raw);
-  //  CloudType::Ptr fg = OctreeFilter(bg, raw);
-  
+  BGS::ImageFilter bgs;
+  bgs.SetBackgroundCloud(bg);
+  CloudType::Ptr fg = bgs.GetForegroundCloud(raw);
+  /*
   // Create the filtering object
   pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
   sor.setInputCloud (fg);
@@ -111,10 +112,10 @@ int main(int argc, char** argv)
   sor.setStddevMulThresh (1.0);
   CloudType::Ptr fgfiltered(new CloudType);
   sor.filter (*fgfiltered);  
- 
+  */
   //  printf("Done filtering\n");
   char outfile[64];
   argv[2][strlen(argv[2])-4] = '\0';
   sprintf(outfile, "fg_%s.pcd", argv[2]);
-  pcl::io::savePCDFileASCII(outfile, *fgfiltered);
+  pcl::io::savePCDFileASCII(outfile, *fg);
 }
