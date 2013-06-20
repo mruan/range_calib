@@ -1,5 +1,5 @@
 
-filepath = '../data/sr0_0.pcd';
+filepath = '../build/sr0_4.pcd';
 data = dlmread(filepath, ' ', 10, 0);
 
 cloud = reshape(data(:,3), 176, 144)';

@@ -4,8 +4,9 @@
 #include <algorithm> // for std::sort
 
  // pack r/g/b into rgb
-static int red = ((int)255) << 16 | ((int)0) << 8 | ((int)0);
-static int blue= ((int)0)   << 16 | ((int)0) << 8 | ((int)255);
+static int red  = ((int)255) << 16 | ((int)0)   << 8 | ((int)0);
+static int green= ((int)0)   << 16 | ((int)255) << 8 | ((int)0);
+static int blue = ((int)0)   << 16 | ((int)0)   << 8 | ((int)255);
 
 /*
 uint32_t red = (static_cast<uint32_t>(255) << 16 |
@@ -40,20 +41,20 @@ ColorizeCloud(pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud,
   return ccl;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr
 ColorizeCloud(pcl::PointCloud<pcl::PointXYZ>::ConstPtr input,
-	      pcl::PointIndices::Ptr inlierIdx)
+	      std::vector<int>& indices)
 {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
   output->points.resize(input->points.size());
 
   int numInlier = 0, numOutlier = 0;
   // In case it wasn't sorted
-  std::sort(inlierIdx->indices.begin(), inlierIdx->indices.end());
+  std::sort(indices.begin(), indices.end());
   size_t j=0;
   for(size_t i=0; i< input->points.size(); ++i)
     {
-      if (i==inlierIdx->indices[j])
+      if (i==indices[j])
 	{
 	  output->points[i].rgb = *reinterpret_cast<float*>(&red);
 	  ++j;
@@ -71,4 +72,12 @@ ColorizeCloud(pcl::PointCloud<pcl::PointXYZ>::ConstPtr input,
     }
   //  std::cout << "Num inliers="<< numInlier << ", Num outliers="<< numOutlier<<std::endl;
   return output;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr 
+ColorizeCloud(pcl::PointCloud<pcl::PointXYZ>::ConstPtr input,
+	      pcl::PointIndices::Ptr inlierIdx)
+{
+  //  pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
+  return ColorizeCloud(input, inlierIdx->indices);
 }

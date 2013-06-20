@@ -113,7 +113,8 @@ namespace BGS // background subtraction
 	}
 
       // Morphological operation: Erosion and dilation
-      count = DoMorphologyin2_5D();
+      count = Erode2_5D(6.0);
+      count = Dilate2_5D(6.0);
 
       if (returnCloud)
 	{
@@ -132,12 +133,94 @@ namespace BGS // background subtraction
 	}
     }
 
+    // Erosion and Dilation in 2.5D (where the radius scales with depth)
+    int Erode2_5D(float alpha)
+    {
+      int count = 0;
+      std::vector<bool> temp(_mask.size(), 0);// start with all zeros
+
+      for(int i=0; i<_mask.size(); i++)
+	{
+	  if(_mask[i])
+	    count++;
+	}
+      printf("%d left\n", count);      count = 0;
+
+      // Erosion
+      for(int i=0; i< _bg->height; ++i)
+	{
+	  for(int j=0; j< _bg->width; ++j)
+	    {
+	      int index = i*_bg->width+j;
+	      if (!_mask[index]) //if it's already 0, leave it that way
+		continue;
+	      
+	      int R = ceil(alpha / _bg->points[index].z);
+	      bool keep_flag = true;
+	      for(int k= -R; k<= R; k++)
+		{
+		  int r = i+k;
+		  int c = j+k;
+		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width &&
+		     _mask[r*_bg->width + c] ==0)
+		    {
+		      keep_flag =false;
+		      break;
+		    }
+		}
+	      if (keep_flag) temp[index] = 1;
+	    }
+	}
+
+      for (int i=0; i< _mask.size(); ++i)
+	{
+	  _mask[i] = temp[i];
+	  if(_mask[i])
+	    count++;
+	}
+      printf("%d left\n", count);
+      return count;
+    }
+   
+    int Dilate2_5D(float alpha)
+    {
+      int count = 0;
+      std::vector<bool> temp(_mask.size(), 0);// start with all zeros
+
+      for(int i=0; i< _bg->height; ++i)
+	{
+	  for(int j=0; j< _bg->width; ++j)
+	    {
+	      int index = i*_bg->width+j;
+	      if (!_mask[index]) 
+		continue;
+	      
+	      int R = ceil(alpha /_bg->points[index].z);
+	      for(int k= -R; k<= R; k++)
+		{
+		  int r = i+k;
+		  int c = j+k;
+		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width)
+		      temp[r*_bg->width + c] = 1;
+		}
+	    }
+	}
+      count = 0;
+      for (int i=0; i< _mask.size(); ++i)
+	{
+	  _mask[i] = _mask[i] | temp[i];
+	  if (_mask[i])
+	    count++;
+	}
+      printf("%d left\n", count);
+      return count;
+    }
+
     // Erosion and Dilation
-    int DoMorphologyin2D()
+    int Erode2D(int R = 1)
     {
       int count = 0;
       std::vector<bool> temp(_mask.size(), 1);
-      int R = 1;
 
       for(int i=0; i<_mask.size(); i++)
 	{
@@ -167,12 +250,17 @@ namespace BGS // background subtraction
       for (int i=0; i< _mask.size(); ++i)
 	{
 	  _mask[i] = _mask[i] & temp[i];
-	  temp[i] = 0; // reset to all 0 for use in dialation
+	  //	  temp[i] = 0; // reset to all 0 for use in dialation
 	  if(_mask[i])
 	    count++;
 	}
       printf("%d left\n", count);
+    }
 
+    int Dilate2D(int R = 1)
+    {
+      int count = 0;
+      std::vector<bool> temp(_mask.size(), 0);
       // Dialation
       for(int i=0; i< _bg->height; ++i)
 	{
@@ -181,87 +269,6 @@ namespace BGS // background subtraction
 	      if (!_mask[i*_bg->width+j]) 
 		continue;
 	       
-	      for(int k= -R; k<= R; k++)
-		{
-		  int r = i+k;
-		  int c = j+k;
-		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width)
-		      temp[r*_bg->width + c] = 1;
-		}
-	    }
-	}
-
-      count = 0;
-      for (int i=0; i< _mask.size(); ++i)
-	{
-	  _mask[i] = _mask[i] | temp[i];
-	  if (_mask[i])
-	    count++;
-	}
-      printf("%d left\n", count);
-      return count;
-    }
-
-    // Erosion and Dilation in 2.5D (where the radius scales with depth)
-    int DoMorphologyin2_5D()
-    {
-      int count = 0;
-      std::vector<bool> temp(_mask.size(), 0);// start with all zeros
-      float alpha = 0.33;
-
-      for(int i=0; i<_mask.size(); i++)
-	{
-	  if(_mask[i])
-	    count++;
-	}
-      printf("%d left\n", count);      count = 0;
-
-      // Erosion
-      for(int i=0; i< _bg->height; ++i)
-	{
-	  for(int j=0; j< _bg->width; ++j)
-	    {
-	      int index = i*_bg->width+j;
-	      if (!_mask[index]) //if it's already 0, leave it that way
-		continue;
-	      
-	      int R = ceil(alpha*_bg->points[index].z);
-	      bool keep_flag = true;
-	      for(int k= -R; k<= R; k++)
-		{
-		  int r = i+k;
-		  int c = j+k;
-		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width &&
-		     _mask[r*_bg->width + c] ==0)
-		    {
-		      keep_flag =false;
-		      break;
-		    }
-		}
-	      if (keep_flag) temp[index] = 1;
-	    }
-	}
-
-      for (int i=0; i< _mask.size(); ++i)
-	{
-	  _mask[i] = temp[i];
-	  temp[i] = 0; // reset to all 0 for use in dialation
-	  if(_mask[i])
-	    count++;
-	}
-      printf("%d left\n", count);
-
-
-      // Dialation
-      for(int i=0; i< _bg->height; ++i)
-	{
-	  for(int j=0; j< _bg->width; ++j)
-	    {
-	      int index = i*_bg->width+j;
-	      if (!_mask[index]) 
-		continue;
-	      
-	      int R = ceil(alpha*_bg->points[index].z);
 	      for(int k= -R; k<= R; k++)
 		{
 		  int r = i+k;

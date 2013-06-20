@@ -28,11 +28,53 @@
 #include <pcl/filters/statistical_outlier_removal.h>
 
 // For background subtraction
-#include "bg_sub.hpp"
+#include "bg_subtractor.hpp"
 
 using namespace std;
 typedef pcl::PointXYZ PointType;
 typedef pcl::PointCloud<PointType> CloudType;
+
+int main(int argc, char** argv)
+{
+  if (argc< 3)
+    {
+      printf("Usage: %s [bg pcd] [fg pcd]\n", argv[0]);
+      return -1;
+    }
+
+  // Load PCD file:
+  CloudType::Ptr bg (new CloudType), raw(new CloudType);
+
+  if (pcl::io::loadPCDFile<PointType> (argv[1], *bg) == -1 ||
+      pcl::io::loadPCDFile<PointType> (argv[2], *raw) == -1)
+    {
+      PCL_ERROR ("Couldn't read file\n");
+      return (-1);
+    }
+
+  // Imagebased background subtraction
+  BGS::ImageFilter bgs;
+  bgs.SetBackgroundCloud(bg);
+  CloudType::Ptr fg = bgs.GetForegroundCloud(raw);
+  /*
+  // Create the filtering object
+  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+  sor.setInputCloud (fg);
+  sor.setMeanK (50);
+  sor.setStddevMulThresh (1.0);
+  CloudType::Ptr fgfiltered(new CloudType);
+  sor.filter (*fgfiltered);  
+  */
+  //  printf("Done filtering\n");
+  char outfile[64];
+  argv[2][strlen(argv[2])-4] = '\0';
+  sprintf(outfile, "fg_%s.pcd", argv[2]);
+  pcl::io::savePCDFileASCII(outfile, *fg);
+}
+
+
+
+
 /*
 CloudType::Ptr OctreeFilter(CloudType::Ptr bg, CloudType::Ptr raw)
 {
@@ -82,40 +124,3 @@ CloudType::Ptr ImageFilter(CloudType::Ptr bg, CloudType::Ptr raw)
   return fg;
 }
 */
-int main(int argc, char** argv)
-{
-  if (argc< 3)
-    {
-      printf("Usage: %s [bg pcd] [fg pcd]\n", argv[0]);
-      return -1;
-    }
-
-  // Load PCD file:
-  CloudType::Ptr bg (new CloudType), raw(new CloudType);
-
-  if (pcl::io::loadPCDFile<PointType> (argv[1], *bg) == -1 ||
-      pcl::io::loadPCDFile<PointType> (argv[2], *raw) == -1)
-    {
-      PCL_ERROR ("Couldn't read file\n");
-      return (-1);
-    }
-
-  // Imagebased background subtraction
-  BGS::ImageFilter bgs;
-  bgs.SetBackgroundCloud(bg);
-  CloudType::Ptr fg = bgs.GetForegroundCloud(raw);
-  /*
-  // Create the filtering object
-  pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
-  sor.setInputCloud (fg);
-  sor.setMeanK (50);
-  sor.setStddevMulThresh (1.0);
-  CloudType::Ptr fgfiltered(new CloudType);
-  sor.filter (*fgfiltered);  
-  */
-  //  printf("Done filtering\n");
-  char outfile[64];
-  argv[2][strlen(argv[2])-4] = '\0';
-  sprintf(outfile, "fg_%s.pcd", argv[2]);
-  pcl::io::savePCDFileASCII(outfile, *fg);
-}

@@ -7,18 +7,17 @@
 
  */
 
-//#include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
-class BallFilter
+class BallSelector
 {
 public:
-  BallFilter(double r, double err)
+  BallSelector(double r, double err)
     :_radius(r), _err(err){}
 
-  void SetInputPCL(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
-  {  _cloud = cloud; _w = cloud->width; _h = cloud->height; _flt_mask.resize(_w*_h); }
+  void SetInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+  { _cloud = cloud; _w = cloud->width; _h = cloud->height; _flt_mask.resize(_w*_h); }
 
   void GetCenter(double& x, double& y, double &z)
   { x = _center[0];  y = _center[1]; z = _center[2]; }
@@ -26,13 +25,9 @@ public:
   const std::vector<bool>& GetMask()
   { return _flt_mask; }
 
-  //  void Reset();
-
-  //  void Reset(double r, int width, int height);
-
   // This is still a rather stupid implementation of the idea
   // which should have exploited neighbors in image space
-  bool ApplyFilter()
+  float ComputeScore()
   {
     double cx, cy, cz; // center of sphere
     double dx, dy, dz; // difference
@@ -68,8 +63,8 @@ public:
 	      this_count++;
 	  }
 
-	// Objects that are far away have fewer pixels per area.
-	this_score = this_count * cz * cz;
+	// Percentage of inliers.
+	this_score = this_count / (float) (_w*_h);
 
 	if (this_score > best_score)
 	  {
@@ -77,9 +72,10 @@ public:
 	    best_index = i;
 	  }
       }
-
-    if (best_index < 0)
-      return false;
+    
+    // At least half of the points are inliers
+    if (best_index < 0.5)
+      return -0.5; // negative value
 
     //  std::cout << "Found " << best_count << " inliers" << std::endl;
 
@@ -101,18 +97,18 @@ public:
 	if (isInlier(dx, dy, dz))
 	  _flt_mask[j] = true;
       }
-    return true;
+    return best_score;
   }
 
 private:
 
-  inline bool isInlier(double x, double y, double z)
+  inline bool isInlier(double dx, double dy, double dz)
   {
-    return (x*x+y*y+z*z) < (_radius*_radius +_err*_err);
+    // |(dl/R)^2 - 1| < Error 
+    return fabs((dx*dx+dy*dy+dz*dz)/(_radius*_radius)-1.0) < _err;
     //    return fabs(sqrt(x*x+y*y+z*z) - _radius) < _err;
   }
   
-#define MIN_COUNT 10
   double _radius;
   double _err; // TODO: _err can be a function of depth
   int _w, _h;
