@@ -75,6 +75,7 @@ public:
     //    fclose(fd);
     printf(" ");
     //    printf("%lf %lf %lf, %lf %lf, %lf\n", X, Y,Z, p, q, res[0]);
+    return true;
   }
 
 private:

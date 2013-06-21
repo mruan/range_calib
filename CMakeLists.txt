@@ -43,3 +43,6 @@ target_link_libraries (test_ballfilter ${PCL_LIBRARIES} ${CERES_LIBRARIES})
 
 add_executable (test_be src/test_be.cpp)
 target_link_libraries(test_be ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+
+add_executable (test_calib3D src/test_calib3D.cpp)
+target_link_libraries(test_calib3D ${CERES_LIBRARIES})
