@@ -33,12 +33,12 @@ class Sensor
 public:
   Sensor() { InitParameters(); }
   Sensor(std::string _name):name(_name) { InitParameters(); }
-  Sensor(std::istream& is);
+  Sensor(std::istream& is){ std::cout<< "sensor constructor"<<std::endl; InitParameters(); };
 
   ~Sensor(){delete q; delete t;}
 
   virtual void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks) = 0;
-  virtual std::ostream& operator<< (std::ostream& os) =0;
+  virtual void WriteToStream(std::ostream& os) = 0;
   //  void SetExtrinsic(double  
 protected:
   // Write base information to out-stream
@@ -46,7 +46,7 @@ protected:
   {
     os << "Name: " << name << std::endl;
     os << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
-    os << "Translation: "<< t[0] <<" "<<t[2]<<" " <<t[3]<<std::endl;
+    os << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
   }
 
   // Read base information from in-nstream
@@ -59,7 +59,9 @@ protected:
     assert(token == "Quaternion:");
     is >> q[0] >> q[1] >> q[2] >> q[3] >> token;
     assert(token == "Translation:");
-    is >> t[0] >> t[0] >> t[2];
+    //    std::cout << name << q[0] << q[1] << q[2]<<q[3] <<std::endl;
+    //    std::cout << " t: "<<t[0];// << t[1] << t[2] <<std::endl;
+    is >> t[0] >> t[1] >> t[2];
   }
 
   // Parameters that will be optimized
@@ -72,8 +74,8 @@ private:
   {
     try
       {
-	double* q = new double[4];
-	double* t = new double[3];
+	q = new double[4];
+	t = new double[3];
       }
     catch (std::bad_alloc&)
       {
@@ -89,8 +91,8 @@ public:
   Camera(std::istream& is){}
   Camera(std::string _name):Sensor(_name){}
 
-  std::ostream& operator<< (std::ostream& os){}
-
+  void ReadFromStream(std::istream& is){}
+  void WriteToStream (std::ostream& os){}
   void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks){}
 private:
   //  double intrinsic[6];
@@ -101,7 +103,7 @@ class RangeSensor: public Sensor
 {
 public:
   // Initialize from an input stream
-  RangeSensor(std::istream& is)
+  RangeSensor(std::istream& is):Sensor()
   {
     ReadBaseInfo(is);
     std::string token;
@@ -114,13 +116,14 @@ public:
     while(it != observations.end())
       {
 	is >> it->first >> it->second.x >> it->second.y >> it->second.z;
+	++it;
       }
   }
 
   // Default constructor
   RangeSensor(std::string _name):Sensor(_name){}
 
-  std::ostream& operator<< (std::ostream& os)
+  void WriteToStream(std::ostream& os)
   {
     os << "Type: RangeSensor" << std::endl;
     WriteBaseInfo(os);
@@ -130,7 +133,6 @@ public:
 	Point3d& p = observations[i].second;
 	os << observations[i].first <<" "<<p.x<<" "<<p.y<<" "<<p.z<<std::endl;
       }
-    return os;
   }
 
   // Initialize a ceres::Problem
@@ -168,7 +170,7 @@ public:
   }
 
   // Basic I/O
-  bool ReadfromFile(std::istream& is)
+  bool ReadfromStream(std::istream& is)
   {
     std::string token; // just a buffer
     int num_sensors, num_landmarks;
@@ -213,22 +215,25 @@ public:
       }
 
     // Add all points locations (could be non-sense random guesses)
+    is >> token;
+    assert(token == "Landmarks:");
     for (int i=0; i< num_landmarks; ++i)
       is >> _landmarks[i].x >> _landmarks[i].y >> _landmarks[i].z;
 
     return true;
   }
 
-  void WriteToFile(std::ostream& os)
+  void WriteToStream(std::ostream& os)
   {
     os << "NumSensors: "<< _sensors.size() << std::endl;
     os << "NumLandmarks: " << _landmarks.size() << std::endl;
 
     // Write out sensor informations
     for(int i=0; i< _sensors.size(); ++i)
-      os << _sensors[i];
+      _sensors[i]->WriteToStream(os);
     
     // Write out points informations
+    os << "Landmarks:" << std::endl;
     for(int i=0; i< _landmarks.size(); ++i)
       {
 	Point3d& p = _landmarks[i];

@@ -73,7 +73,7 @@ public:
     //    FILE* fd = fopen("/tmp/ceres.log", "a");
     //    fprintf(fd, " ");
     //    fclose(fd);
-    printf(" ");
+    //   printf(" ");
     //    printf("%lf %lf %lf, %lf %lf, %lf\n", X, Y,Z, p, q, res[0]);
     return true;
   }

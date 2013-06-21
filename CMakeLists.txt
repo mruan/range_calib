@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(extract_circle)
 
 # I don't wanna see all the warnings about PCL-SHOT
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wno-deprecated-declarations")
 
 # I built PCL from source. You may want to comment out this set(PCL_DIR) if
 # you got pcl from apt-get

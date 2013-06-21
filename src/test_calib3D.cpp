@@ -19,8 +19,8 @@ int main(int argc, char** argv)
       return -1;
     }
 
-  std::ifstream fs(argv[1], std::ifstream::in);
-  if(!fs.is_open())
+  std::ifstream ifs(argv[1], std::ifstream::in);
+  if(!ifs.is_open())
     {
       std::cerr<< "Cannot open file: "<< std::string(argv[1])<< std::endl;
       return -1;
@@ -30,9 +30,15 @@ int main(int argc, char** argv)
   ceres::Problem problem;
   ceres::Solver::Options options;
 
-  if(!rm.ReadfromFile(fs))
+  if(!rm.ReadfromStream(ifs))
     return -1;
+  ifs.close();
 
+  std::ofstream ofs(argv[2], std::ofstream::out);
+  rm.WriteToStream(ofs);
+  ofs.close();
+
+  /*
   rm.BuildProblem(problem);
 
   // Minimizer options
@@ -47,6 +53,6 @@ int main(int argc, char** argv)
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
   std::cout << summary.FullReport() << std::endl;
-
+  */
   return 0;
 }
