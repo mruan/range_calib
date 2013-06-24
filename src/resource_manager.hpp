@@ -143,7 +143,7 @@ public:
 	ceres::CostFunction* cf = Euclidean3DError::Create(p.x, p.y, p.z);
 
 	ceres::LossFunction* lf = NULL;//new HuberLoss(1.0);
-	prob.AddResidualBlock(cf, lf, q, t, &landmarks[index].x);
+	prob.AddResidualBlock(cf, lf, q, t, &(landmarks[index].x));
       }
     ceres::LocalParameterization* lp = new ceres::QuaternionParameterization;
     prob.SetParameterization(q, lp);
