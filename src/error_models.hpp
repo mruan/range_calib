@@ -8,8 +8,9 @@
 // Templated range sensor model for use with Ceres.
 // The camera is parameterized using 7 parameters: 4 for rotation+ 3 for translation
 // i.e. only the extrinsics are being optimized.
-struct Euclidean3DError
+class Euclidean3DError
 {
+public:
   Euclidean3DError(double ox, double oy, double oz)
     :_ox(ox), _oy(oy), _oz(oz){}
 
@@ -31,6 +32,12 @@ struct Euclidean3DError
     residuals[1] = p[1] - T(_oy);
     residuals[2] = p[2] - T(_oz);
     return true;
+  }
+
+  static ceres::CostFunction* Create(double x, double y, double z)
+  {
+    return new ceres::AutoDiffCostFunction<Euclidean3DError,3,4,3,3>(
+		      new Euclidean3DError(x, y, z));
   }
 
   double _ox, _oy, _oz; // observed (x, y, z)

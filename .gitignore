@@ -8,6 +8,7 @@ install_manifest.txt
 # Output dir
 bin/
 build/
+data/
 
 # Temporary objects/files
 *~

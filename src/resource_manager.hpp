@@ -49,7 +49,7 @@ protected:
     os << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
   }
 
-  // Read base information from in-nstream
+  // Read base information from in-stream
   void ReadBaseInfo(std::istream& is)
   {
     std::string token;
@@ -59,8 +59,6 @@ protected:
     assert(token == "Quaternion:");
     is >> q[0] >> q[1] >> q[2] >> q[3] >> token;
     assert(token == "Translation:");
-    //    std::cout << name << q[0] << q[1] << q[2]<<q[3] <<std::endl;
-    //    std::cout << " t: "<<t[0];// << t[1] << t[2] <<std::endl;
     is >> t[0] >> t[1] >> t[2];
   }
 
@@ -142,8 +140,7 @@ public:
       {
 	Point3d& p = observations[i].second;
 	int index  = observations[i].first;
-	ceres::CostFunction* cf = new ceres::AutoDiffCostFunction<Euclidean3DError,3,4,3,3>(
-				    new Euclidean3DError(p.x, p.y, p.z));
+	ceres::CostFunction* cf = Euclidean3DError::Create(p.x, p.y, p.z);
 
 	ceres::LossFunction* lf = NULL;//new HuberLoss(1.0);
 	prob.AddResidualBlock(cf, lf, q, t, &landmarks[index].x);

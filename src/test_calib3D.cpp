@@ -33,26 +33,22 @@ int main(int argc, char** argv)
   if(!rm.ReadfromStream(ifs))
     return -1;
   ifs.close();
+  
 
-  std::ofstream ofs(argv[2], std::ofstream::out);
-  rm.WriteToStream(ofs);
-  ofs.close();
-
-  /*
   rm.BuildProblem(problem);
 
   // Minimizer options
   options.max_num_iterations = 25;
   options.minimizer_progress_to_stdout = true;
-  options.num_threads = 1;
+  //  options.num_threads = 1;
     
   // Linear solver options
-  //  options.linear_solver_type = ceres::DENSE_SCHUR;
-  options.num_linear_solver_threads = 1;
+  options.linear_solver_type = ceres::DENSE_SCHUR;
+  //  options.num_linear_solver_threads = 1;
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
   std::cout << summary.FullReport() << std::endl;
-  */
+  
   return 0;
 }
