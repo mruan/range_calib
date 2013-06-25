@@ -37,7 +37,7 @@ public:
 
   ~Sensor(){delete q; delete t;}
 
-  virtual void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks) = 0;
+  virtual void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixed) = 0;
   virtual void WriteToStream(std::ostream& os) = 0;
   //  void SetExtrinsic(double  
 protected:
@@ -58,8 +58,10 @@ protected:
     is >> name >> token;
     assert(token == "Quaternion:");
     is >> q[0] >> q[1] >> q[2] >> q[3] >> token;
+    std::cout << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
     assert(token == "Translation:");
     is >> t[0] >> t[1] >> t[2];
+    std::cout << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
   }
 
   // Parameters that will be optimized
@@ -91,7 +93,7 @@ public:
 
   void ReadFromStream(std::istream& is){}
   void WriteToStream (std::ostream& os){}
-  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks){}
+  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixed){}
 private:
   //  double intrinsic[6];
   std::vector<std::pair<int, Point2i> > observations;
@@ -110,11 +112,10 @@ public:
     int numObs;
     is >> numObs;
     observations.resize(numObs);
-    std::vector<std::pair<int, Point3d> >::iterator it = observations.begin();
-    while(it != observations.end())
+    for(int i=0; i< numObs; ++i)
       {
-	is >> it->first >> it->second.x >> it->second.y >> it->second.z;
-	++it;
+	Point3d& p = observations[i].second;
+	is >> observations[i].first >> p.x >> p.y >> p.z;
       }
   }
 
@@ -134,13 +135,13 @@ public:
   }
 
   // Initialize a ceres::Problem
-  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks)
+  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixedCam)
   {
     for(int i=0; i < observations.size(); ++i)
       {
 	Point3d& p = observations[i].second;
 	int index  = observations[i].first;
-	ceres::CostFunction* cf = Euclidean3DError::Create(p.x, p.y, p.z);
+	ceres::CostFunction* cf = Euclidean3DError::Create(p.x, p.y, p.z, fixedCam);
 
 	ceres::LossFunction* lf = NULL;//new HuberLoss(1.0);
 	prob.AddResidualBlock(cf, lf, q, t, &(landmarks[index].x));
@@ -244,8 +245,11 @@ public:
     // make sure this manager has a problem to create...
     assert(!_sensors.empty() && !_landmarks.empty());
 
+    // Set the first sensor as a fixed reference frame
+    //    _sensors[0]->InitProblem(prob, _landmarks, true);
+    // The rest sensors are allowed to move
     for(int i=0; i< _sensors.size(); i++)
-      _sensors[i]->InitProblem(prob, _landmarks);
+      _sensors[i]->InitProblem(prob, _landmarks, false);
   }
 
   ~ResourceManager()

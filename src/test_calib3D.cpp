@@ -50,5 +50,10 @@ int main(int argc, char** argv)
   ceres::Solve(options, &problem, &summary);
   std::cout << summary.FullReport() << std::endl;
   
+
+  std::ofstream ofs("out.txt", std::ofstream::out);
+  rm.WriteToStream(ofs);
+  ofs.close();
+
   return 0;
 }

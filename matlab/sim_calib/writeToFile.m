@@ -21,7 +21,7 @@ function [fd] = WriteSensor(fd, type, name, X, Z)
 num_obs = int32(num_obs /3);
 
 t = X(1:3);
-q = [sqrt(1 - X(4:6).^2); X(4:6)];
+q = [sqrt(1 - dot(X(4:6),X(4:6))); X(4:6)];
 
 fprintf(fd, 'Type: %s\n', type);
 fprintf(fd, 'Name: %s\n', name);

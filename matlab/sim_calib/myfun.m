@@ -66,11 +66,11 @@ tran = x(1:3);
 if numel(x) ==6
   rot  = x(4:6);
   w = sqrt(1- dot(rot,rot));
-  dcm = quat2dcm([w, rot']);
+  R = q2r([w, rot']);
 else
-  dcm = quat2dcm(x(4:7));
+  R = q2r(x(4:7));
 end
-Tf = [dcm, tran; 0 0 0 1];
+Tf = [R, tran; 0 0 0 1];
 end
 
 function [P] = projPts(tf, Pz)

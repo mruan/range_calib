@@ -7,17 +7,16 @@ assert(numel(origin) == 3 && numel(lookat)==3);
 r = lookat - origin;
 hz = r/norm(r);
 
-hy = [0; 0; -1];
-hy = hy - dot(hy, hz)*hz;
-hy = hy/norm(hy);
+hx = cross([0;0;-1], hz);
+hx = hx/norm(hx);
 
-hx = cross(hy, hz);
+hy = cross(hz, hx);
+hy = hy/norm(hx);
 
 R = [hx, hy, hz];
 
-q = dcm2quat(R);
-if q(1) < 0
-  q = -q;
-end
+% Notice this is DCM, so we have to transpose the Rotation Matrix
+q = r2q(R);
+
 q = q(2:4)';
 end
