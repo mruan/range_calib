@@ -7,152 +7,10 @@
 #include <string>
 #include <assert.h>
 
-#include "error_models.hpp"
+#include <memory>
 
-/***********************************************************
-                   Basic Type definition
- **********************************************************/
-struct Point3d
-{
-  Point3d(double a=0, double b=0, double c=0):x(a),y(b),z(c){}
-  Point3d(double p[3]):x(p[0]),y(p[1]),z(p[2]){}
-  double x, y, z;
-};
-
-struct Point2i
-{
-  Point2i(int a, int b):u(a),v(b){}
-  int u,v;
-};
-
-/************************************************************
-                   Sensor Type definition
- ************************************************************/
-class Sensor
-{
-public:
-  Sensor() { InitParameters(); }
-  Sensor(std::string _name):name(_name) { InitParameters(); }
-  Sensor(std::istream& is){ std::cout<< "sensor constructor"<<std::endl; InitParameters(); };
-
-  ~Sensor(){delete q; delete t;}
-
-  virtual void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixed) = 0;
-  virtual void WriteToStream(std::ostream& os) = 0;
-  //  void SetExtrinsic(double  
-protected:
-  // Write base information to out-stream
-  void WriteBaseInfo(std::ostream& os)
-  {
-    os << "Name: " << name << std::endl;
-    os << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
-    os << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
-  }
-
-  // Read base information from in-stream
-  void ReadBaseInfo(std::istream& is)
-  {
-    std::string token;
-    is >> token;
-    assert(token == "Name:");
-    is >> name >> token;
-    assert(token == "Quaternion:");
-    is >> q[0] >> q[1] >> q[2] >> q[3] >> token;
-    std::cout << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
-    assert(token == "Translation:");
-    is >> t[0] >> t[1] >> t[2];
-    std::cout << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
-  }
-
-  // Parameters that will be optimized
-  double* q;//quaternion
-  double* t;//translation
-  std::string name;
-
-private:
-  void InitParameters()
-  {
-    try
-      {
-	q = new double[4];
-	t = new double[3];
-      }
-    catch (std::bad_alloc&)
-      {
-	std::cerr << "Error allocating memory." << std::endl;
-      }
-    q[0] = 1.0;// unit quaternion
-  }
-};
-
-class Camera: public Sensor
-{
-public:
-  Camera(std::istream& is){}
-  Camera(std::string _name):Sensor(_name){}
-
-  void ReadFromStream(std::istream& is){}
-  void WriteToStream (std::ostream& os){}
-  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixed){}
-private:
-  //  double intrinsic[6];
-  std::vector<std::pair<int, Point2i> > observations;
-};
-
-class RangeSensor: public Sensor
-{
-public:
-  // Initialize from an input stream
-  RangeSensor(std::istream& is):Sensor()
-  {
-    ReadBaseInfo(is);
-    std::string token;
-    is >> token;
-    assert(token == "NumObservations:");
-    int numObs;
-    is >> numObs;
-    observations.resize(numObs);
-    for(int i=0; i< numObs; ++i)
-      {
-	Point3d& p = observations[i].second;
-	is >> observations[i].first >> p.x >> p.y >> p.z;
-      }
-  }
-
-  // Default constructor
-  RangeSensor(std::string _name):Sensor(_name){}
-
-  void WriteToStream(std::ostream& os)
-  {
-    os << "Type: RangeSensor" << std::endl;
-    WriteBaseInfo(os);
-    os << "NumObservations: " << observations.size() << std::endl;
-    for (int i=0; i < observations.size(); i++)
-      {
-	Point3d& p = observations[i].second;
-	os << observations[i].first <<" "<<p.x<<" "<<p.y<<" "<<p.z<<std::endl;
-      }
-  }
-
-  // Initialize a ceres::Problem
-  void InitProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixedCam)
-  {
-    for(int i=0; i < observations.size(); ++i)
-      {
-	Point3d& p = observations[i].second;
-	int index  = observations[i].first;
-	ceres::CostFunction* cf = Euclidean3DError::Create(p.x, p.y, p.z, fixedCam);
-
-	ceres::LossFunction* lf = NULL;//new HuberLoss(1.0);
-	prob.AddResidualBlock(cf, lf, q, t, &(landmarks[index].x));
-      }
-    ceres::LocalParameterization* lp = new ceres::QuaternionParameterization;
-    prob.SetParameterization(q, lp);
-  }
-
-private:
-  std::vector<std::pair<int, Point3d> > observations;
-};
+#include "types.hpp"
+#include "generic_sensor.hpp"
 
 /************************************************************
                    Resource Manager definition
@@ -160,11 +18,42 @@ private:
 class ResourceManager
 {
 public:
-  ResourceManager()
+  ResourceManager(int num_sensors=0, int num_landmarks=0)
   {
     // Set up allowable sensor types
     _type2id["RangeSensor"] = 1;
     _type2id["Camera"]      = 2;
+
+    _sensors.reserve(num_sensors);
+    _landmarks.reserve(num_landmarks);
+  }
+
+  // API for adding something to the manager
+  void AddSensor(std::shared_ptr<Sensor> sensor_sptr)
+  {
+    _sensors.push_back(sensor_sptr);
+  }
+
+  void AddLandmark(double cx, double cy, double cz)
+  {
+    _landmarks.push_back(Point3d(cx, cy, cz));
+  }
+
+  // Accessor functions
+  const std::vector<Point3d>& GetLandmarks()
+  {
+    return _landmarks;
+  }
+
+  //  void GetSensorObservations(int i)
+  //  {
+  //    return _sensors[i]->observations;
+  //  }
+
+  void SetSensorTf(int i, double t[3], double q[4])
+  {
+    std::copy(&t[0], &t[2], _sensors[i]->t);
+    std::copy(&q[0], &q[3], _sensors[i]->q);
   }
 
   // Basic I/O
@@ -201,10 +90,10 @@ public:
 	switch (_type2id[token])
 	  {
 	  case 1:
-	    _sensors[i] = new RangeSensor(is);
+	    _sensors[i] = std::shared_ptr<Sensor>(new RangeSensor(is));
 	    break;
 	  case 2:
-	    _sensors[i] = new Camera(is);
+	    _sensors[i] = std::shared_ptr<Sensor>(new Camera(is));
 	    break;
 	  default:
 	    std::cerr<< "Unknown sensor type"<<std::endl;
@@ -240,7 +129,7 @@ public:
   }
 
   // Construct a ceres::Problem 
-  void BuildProblem(ceres::Problem& prob)
+  void BuildCeresProblem(ceres::Problem& prob)
   {
     // make sure this manager has a problem to create...
     assert(!_sensors.empty() && !_landmarks.empty());
@@ -249,16 +138,11 @@ public:
     //    _sensors[0]->InitProblem(prob, _landmarks, true);
     // The rest sensors are allowed to move
     for(int i=0; i< _sensors.size(); i++)
-      _sensors[i]->InitProblem(prob, _landmarks, false);
+      _sensors[i]->InitCeresProblem(prob, _landmarks, false);
   }
 
-  ~ResourceManager()
-  {
-    for(int i=0; i< _sensors.size(); i++)
-      delete _sensors[i];
-  }
 private:
-  std::vector<Sensor*> _sensors;
+  std::vector<std::shared_ptr<Sensor> > _sensors;
   std::vector<Point3d> _landmarks;
   std::map<std::string, int> _type2id;
 };

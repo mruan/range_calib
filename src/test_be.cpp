@@ -31,9 +31,9 @@ int main(int argc, char** argv)
   BlobExtraction::KDTreeBE be;
   be.SetInputCloud(cloud);
 
-  double cx, cy, cz;
+  double* center = new double[3];
   std::vector<int> inlierIdx;
-  if( !be.ExtractBallCenter(cx, cy, cz, inlierIdx))
+  if( !be.ExtractBallCenter(center, inlierIdx))
     return -1;
  
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr ccl = ColorizeCloud(cloud, inlierIdx);
@@ -46,8 +46,9 @@ int main(int argc, char** argv)
   viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
   viewer.addCoordinateSystem (0.1);
   viewer.initCameraParameters ();
-  viewer.addSphere(pcl::PointXYZ(cx, cy, cz), 0.1275, 1.0, 1.0, 0.0);
+  viewer.addSphere(pcl::PointXYZ(center[0], center[1], center[2]), 0.1275, 1.0, 1.0, 0.0);
 
+  delete [] center;
   while(!viewer.wasStopped())
     {
       viewer.spinOnce(100);

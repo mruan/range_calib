@@ -68,7 +68,8 @@ int main(int argc, char** argv)
   //  printf("Done filtering\n");
   char outfile[64];
   argv[2][strlen(argv[2])-4] = '\0';
-  sprintf(outfile, "fg_%s.pcd", argv[2]);
+  //  sprintf(outfile, "fg_%s.pcd", argv[2]);
+  sprintf(outfile, "fg.pcd");
   pcl::io::savePCDFileASCII(outfile, *fg);
 }
 

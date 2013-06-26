@@ -13,8 +13,8 @@
  */
 
 #include <iostream>
-#include <pcl/io/openni_grabber.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/openni_grabber.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <boost/thread/thread.hpp>
 
@@ -73,7 +73,7 @@ public:
     std::cout<< "viewer setup" << std::endl;
   }
    
-  void run ()
+  void run (std::string name)
   {
     
     pcl::Grabber* interface = new pcl::OpenNIGrabber();
@@ -100,7 +100,7 @@ public:
 	    if (key_status == SAVE_PCD)
 	      {
 		std::stringstream ss;
-		ss << "cloud_" << counter << ".pcd";
+		ss << name << ".pcd";
 		pcl::io::savePCDFileASCII(ss.str(), *_cloud);
 		std::cerr<<"Saved "<< _cloud->points.size() << " data points to: "<< ss.str() << std::endl;
 		
@@ -119,10 +119,10 @@ public:
   
  };
 
-int main ()
+int main (int argc, char** argv)
 {
   //  SimpleOpenNIViewer v;
   OpenNIViewer v;
-  v.run ();
+  v.run (argv[1]);
   return 0;
 }

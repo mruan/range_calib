@@ -2,6 +2,8 @@
 /*
   Does background subtraction
  */
+#pragma once
+
 #include <pcl/point_types.h>
 #include <pcl/octree/octree.h>
 //#include <pcl/filters/extract_indices.h>
@@ -103,7 +105,8 @@ namespace BGS // background subtraction
 	  PointType pb = _bg->points[i];
 	  PointType pf = raw->points[i];
 	  
-	  if (pf.z < pb.z *(1- pb.z * _eps))
+	  if (pf.z < pb.z *(1- pb.z * _eps) ||
+	      !isnan(pf.z) && isnan(pb.z))
 	    {
 	      _mask[i] = 1;
 	      count++;
@@ -113,8 +116,9 @@ namespace BGS // background subtraction
 	}
 
       // Morphological operation: Erosion and dilation
-      count = Erode2_5D(6.0);
-      count = Dilate2_5D(6.0);
+      //      count = Dilate2_5D(50.0);
+      count = Erode2_5D(100.0);
+      count = Dilate2_5D(100.0);
 
       if (returnCloud)
 	{
@@ -126,7 +130,7 @@ namespace BGS // background subtraction
 	  int j=0;
 	  for (int i=0; i< _mask.size(); ++i)
 	    {
-	      if(_mask[i])
+	      if(_mask[i] && !isnan(raw->points[i].z))
 		fg->points[j++] = raw->points[i];
 	    }
 	  return fg;
@@ -137,14 +141,15 @@ namespace BGS // background subtraction
     int Erode2_5D(float alpha)
     {
       int count = 0;
-      std::vector<bool> temp(_mask.size(), 0);// start with all zeros
+      std::vector<bool> temp(_mask.size(), 1);// start with all ones
 
       for(int i=0; i<_mask.size(); i++)
 	{
 	  if(_mask[i])
 	    count++;
 	}
-      printf("%d left\n", count);      count = 0;
+      //      printf("%d left\n", count);
+      count = 0;
 
       // Erosion
       for(int i=0; i< _bg->height; ++i)
@@ -155,30 +160,37 @@ namespace BGS // background subtraction
 	      if (!_mask[index]) //if it's already 0, leave it that way
 		continue;
 	      
+	      // This pixel is 1, but if any of my neighbor is 0, I become 0.
 	      int R = ceil(alpha / _bg->points[index].z);
-	      bool keep_flag = true;
+	      bool break_flag = false;
 	      for(int k= -R; k<= R; k++)
 		{
-		  int r = i+k;
-		  int c = j+k;
-		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width &&
-		     _mask[r*_bg->width + c] ==0)
+		  for(int l=-R; l<=R; l++)
 		    {
-		      keep_flag =false;
-		      break;
+		      int r = i+k;
+		      int c = j+l;
+		      if(r>=0 && r< _bg->height && c>=0 && c< _bg->width
+			 && _mask[r*_bg->width + c] ==0)
+			{
+			  temp[index] = 0;
+			  break_flag = true;
+			  break;
+			}
 		    }
+		  if (break_flag)
+		    { break_flag=false; break;}
 		}
-	      if (keep_flag) temp[index] = 1;
 	    }
+	  // next pixel
 	}
 
       for (int i=0; i< _mask.size(); ++i)
 	{
-	  _mask[i] = temp[i];
+	  _mask[i] = _mask[i] & temp[i];
 	  if(_mask[i])
 	    count++;
 	}
-      printf("%d left\n", count);
+      //      printf("%d left\n", count);
       return count;
     }
    
@@ -192,16 +204,20 @@ namespace BGS // background subtraction
 	  for(int j=0; j< _bg->width; ++j)
 	    {
 	      int index = i*_bg->width+j;
-	      if (!_mask[index]) 
+	      if (!_mask[index]) // i'm 0, don't do anything
 		continue;
 	      
+	      // I'm 1, all my neighbors will become 1
 	      int R = ceil(alpha /_bg->points[index].z);
 	      for(int k= -R; k<= R; k++)
 		{
-		  int r = i+k;
-		  int c = j+k;
-		  if(r>=0 && r< _bg->height && c>=0 && c< _bg->width)
-		      temp[r*_bg->width + c] = 1;
+		  for(int l=-R; l<=R; l++)
+		    {
+		      int r = i+k;
+		      int c = j+l;
+		      if(r>=0 && r< _bg->height && c>=0 && c< _bg->width)
+			temp[r*_bg->width + c] = 1;
+		    }
 		}
 	    }
 	}
@@ -212,11 +228,12 @@ namespace BGS // background subtraction
 	  if (_mask[i])
 	    count++;
 	}
-      printf("%d left\n", count);
+      //      printf("%d left\n", count);
       return count;
     }
-
+    
     // Erosion and Dilation
+    // TODO: Currently deprecated
     int Erode2D(int R = 1)
     {
       int count = 0;
@@ -227,7 +244,7 @@ namespace BGS // background subtraction
 	  if(_mask[i])
 	    count++;
 	}
-      printf("%d left w: %d h: %d\n", count, _bg->width, _bg->height);
+      //      printf("%d left w: %d h: %d\n", count, _bg->width, _bg->height);
       count = 0;
       // Erosion
       for(int i=0; i< _bg->height; ++i)
@@ -254,7 +271,7 @@ namespace BGS // background subtraction
 	  if(_mask[i])
 	    count++;
 	}
-      printf("%d left\n", count);
+      //      printf("%d left\n", count);
     }
 
     int Dilate2D(int R = 1)
@@ -286,7 +303,7 @@ namespace BGS // background subtraction
 	  if (_mask[i])
 	    count++;
 	}
-      printf("%d left\n", count);
+      //      printf("%d left\n", count);
       return count;
     }
   };

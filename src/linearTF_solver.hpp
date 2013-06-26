@@ -6,24 +6,33 @@
   This linear solution is used for further nonlinear optimization in the coming steps
 */
 
-class LinearTfSovler
+#pragma once
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/SVD>
+
+#include "types.hpp"
+
+class LinearTfSolver
 {
 public:
-  void SetSrcPoints(std::vector<double[3]>& in_cloud)
+  void SetSrcPoints(std::vector<Point3d>& in_cloud)
   {
     compute3DCentroid(in_cloud, centroid_src);
     
     demeanPointCloud(in_cloud, centroid_src, cloud_src_demean);
   }
 
-  void SetTgtPoints(std::vector<double[3]>& out_cloud)
+  void SetTgtPoints(std::vector<Point3d>& out_cloud)
   {
     compute3DCentroid(out_cloud, centroid_src);
 
     demeanPointCloud(out_cloud, centroid_tgt, cloud_tgt_demean);
   }
 
-  void EstimateTfSVD(double t[3], double q[4])
+  // Assume t = double[3], q = double[4]
+  void EstimateTfSVD(double* t, double* q)
   {
     // Assemble the correlation matrix H = source * target'
     Eigen::Matrix3d H = (cloud_src_demean * cloud_tgt_demean.transpose ()).topLeftCorner<3, 3>();
@@ -41,7 +50,7 @@ public:
       }
 
     Eigen::Matrix3d R = v * u.transpose ();
-    Eigen::Quaternion Q(R);
+    Eigen::Quaterniond Q(R);
     q[0] = Q.w(); q[1] = Q.x(); q[2] = Q.y(); q[3] = Q.z();
 
     const Eigen::Vector3d Rc (R * centroid_src.head<3> ());
@@ -50,7 +59,7 @@ public:
   }
 
 private:
-  bool compute3DCentroid(std::vector<double[3]>& cloud, Eigen::Vector4d& centroid)
+  bool compute3DCentroid(std::vector<Point3d>& cloud, Eigen::Vector4d& centroid)
   {
     if (cloud.empty())
       return false;
@@ -60,25 +69,26 @@ private:
 
     for(int i=0; i< cloud.size(); ++i)
       {
-	centroid[0] += cloud[i][0];
-	centroid[1] += cloud[i][1];
-	centroid[2] += cloud[i][2];
+	centroid[0] += cloud[i].x;
+	centroid[1] += cloud[i].y;
+	centroid[2] += cloud[i].z;
       }
     centroid[3] = 0.0;
     centroid /= static_cast<double>(cloud.size());
     return true;
   }
 
-  bool demeanPointCloud(std::vector<double[3]>& cloud, Eigen::Vector4d& centroid, Eigen::MatrixXd &cloud_out)
+  bool demeanPointCloud(std::vector<Point3d>& cloud, 
+			Eigen::Vector4d& centroid, Eigen::MatrixXd &cloud_out)
   {
     size_t npts = cloud.size();
 
-    cloud_out = Eigen::MatrixXf::Zero(4, npts); // keep the data aligned
+    cloud_out = Eigen::MatrixXd::Zero(4, npts); // keep the data aligned
 
     for(size_t i=0; i< npts; ++i)
       {
 	Eigen::Vector4d pt;
-	pt << cloud[i][0] << cloud[i][1] << cloud[i][2] << 0;
+	pt << cloud[i].x, cloud[i].y, cloud[i].z, 0,0;
 	cloud_out.block<4,1>(0, i) = pt - centroid;
 
 	// Make sure zero out the 4th dimension (1 row, N cloumns)
@@ -88,6 +98,6 @@ private:
 
   Eigen::Vector4d centroid_src;
   Eigen::Vector4d centroid_tgt;
-  Eigen::MatrixXf cloud_src_demean;
-  Eigen::MatrixXf cloud_tgt_demean;
+  Eigen::MatrixXd cloud_src_demean;
+  Eigen::MatrixXd cloud_tgt_demean;
 };

@@ -1,5 +1,9 @@
 /*
   Class and Helper functions to extract blob -> sphere from point cloud
+  It normally does the following 3 steps:
+  1. Seperate the point cloud into blobs
+  2. Select which blob contains the ball and find a rough estimate
+  3. Do a nonlinear least square fit to find the center of the ball
  */
 
 #ifndef BLOB_EXTRACTION_HPP
@@ -22,7 +26,9 @@ namespace BlobExtraction{
     // R = 0.1275, Err = err% error (relative to Radius)
     BallSelector bs(0.1275, 0.2);
     bs.SetInputCloud(cloud);
-    return bs.ComputeScore();// the higher the more likely to be a ball
+    float score = bs.ComputeScore();// the higher the more likely to be a ball;
+    bs.GetCenter(x,y,z);
+    return score;
   }
 
   class KDTreeBE
@@ -31,7 +37,7 @@ namespace BlobExtraction{
     KDTreeBE():_kdt(new pcl::search::KdTree<PointT>)
     {
       _ec.setClusterTolerance (0.05); // in meters
-      _ec.setMinClusterSize (50);
+      _ec.setMinClusterSize (200);
       _ec.setMaxClusterSize (25000);
       _ec.setSearchMethod (_kdt);      
     }
@@ -43,8 +49,7 @@ namespace BlobExtraction{
       raw_cloud = in_cloud;
     }
 
-    bool ExtractBallCenter(double &cx, double& cy, double& cz, 
-			   std::vector<int>& inlierIdx)//CloudT::Ptr out_cloud)
+    bool ExtractBallCenter(double* center, std::vector<int>& inlierIdx)
     {
       
       std::vector<pcl::PointIndices> cluster_idx;
@@ -56,10 +61,11 @@ namespace BlobExtraction{
       std::vector<pcl::PointIndices>::iterator best_it = cluster_idx.end();
       double this_score = 0.0, best_score = 0.0;
       double x, y, z;
+      double cx, cy, cz;
       int j=0;
       while(it != cluster_idx.end())
 	{
-	  // for now, save blobs to pcd for debugging
+	  // TODO: this is probably an unnecessary copy
 	  CloudT::Ptr cloud_cluster (new CloudT);
 	  for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
 	    cloud_cluster->points.push_back (raw_cloud->points[*pit]); //*
@@ -67,11 +73,8 @@ namespace BlobExtraction{
 	  cloud_cluster->width = cloud_cluster->points.size ();
 	  cloud_cluster->height = 1;
 	  cloud_cluster->is_dense = true;
-	  
-	  //	  char outfile[64];
-	  //	  sprintf(outfile, "blob%d.pcd", j++);
-	  //	  pcl::io::savePCDFileASCII(outfile, *cloud_cluster);
-	  
+
+	  // How likely does this blob contain the target ball
 	  this_score = ball_score_fn(cloud_cluster, x, y, z);
 	  printf("cluster %d, score= %f\n", j++, this_score);
 	  if (this_score > best_score)
@@ -91,10 +94,11 @@ namespace BlobExtraction{
 
       printf("Best score is %f\n", best_score);
 
+      // Refine the estimate with a nonlinear least square fit
       SphereFitter sf(cx, cy, cz);// set initial guess
       sf.SetInputCloud(raw_cloud, best_it->indices);
-      sf.FitSphere(cx, cy, cz);
-      
+      sf.FitSphere(center);
+
       inlierIdx = best_it->indices;
 
       return true;
@@ -104,7 +108,6 @@ namespace BlobExtraction{
     pcl::search::KdTree<PointT>::Ptr _kdt;
     pcl::EuclideanClusterExtraction<PointT> _ec;
   };
-
 };
 
 #endif

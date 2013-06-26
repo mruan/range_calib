@@ -10,6 +10,7 @@
 #include <ceres/ceres.h>
 
 #include "resource_manager.hpp"
+#include "linearTF_solver.hpp"
 
 int main(int argc, char** argv)
 {
@@ -33,9 +34,19 @@ int main(int argc, char** argv)
   if(!rm.ReadfromStream(ifs))
     return -1;
   ifs.close();
-  
 
-  rm.BuildProblem(problem);
+  LinearTfSolver ls;
+  //  ls.SetSrcPoints(rm.GetLandmarks());
+  // for each sensor in rm, solve a linear rigid transform
+  for (int i=0; i< 3; i++)
+    {
+      //    ls.SetTgtPoints(rm.GetSensorObservations(i));
+      double t[3], q[4];
+      ls.EstimateTfSVD(t, q);
+      rm.SetSensorTf(i, t, q);
+    }
+
+  rm.BuildCeresProblem(problem);
 
   // Minimizer options
   options.max_num_iterations = 25;

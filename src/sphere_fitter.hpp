@@ -1,5 +1,6 @@
 /*
-  Class to fit a sphere to a blob of points. It is critical to have a good initial guess
+  Class to fit a sphere to a blob of points. 
+  It is critical to have a good initial guess
  */
 
 
@@ -13,8 +14,8 @@
 
 using namespace ceres;
 
-#ifndef R // for radius
-#define R 0.1275
+#ifndef RR // for radius
+#define RR 0.1275
 #endif
 
 // The (Directional) Ray cost function from [Marek09]
@@ -44,16 +45,16 @@ public:
     double q2  = pow(y*Z-z*Y,2)+pow(z*X-x*Z,2)+pow(x*Y-y*X,2);
     double q   = std::sqrt(q2);
 
-    if (q < R)
-      res[0] = p - std::sqrt(R*R - q2) - r;
+    if (q < RR)
+      res[0] = p - std::sqrt(RR*RR - q2) - r;
     else
-      res[0] = std::sqrt((p-r)*(p-r) + (q-R)*(q-R));
+      res[0] = std::sqrt((p-r)*(p-r) + (q-RR)*(q-RR));
 
     if (jac != NULL && jac[0] != NULL)
       {
-	if (q < R)
+	if (q < RR)
 	  {
-	    double denom = std::sqrt(R*R - q2);
+	    double denom = std::sqrt(RR*RR - q2);
 	    jac[0][0] = x + (X - x*p) /denom;
 	    jac[0][1] = y + (Y - y*p) /denom;
 	    jac[0][2] = z + (Z - z*p) /denom;
@@ -61,20 +62,12 @@ public:
 	else
 	  {
 	    double pr = p - r;
-	    double qR = 1 - R/q;
+	    double qR = 1 - RR/q;
 	    jac[0][0] = (pr * x + qR *(X - x*p))/res[0];
 	    jac[0][1] = (pr * y + qR *(Y - y*p))/res[0];
 	    jac[0][2] = (pr * z + qR *(Z - z*p))/res[0];
 	  }
       }
-
-    // TODO: This printf() has to be there in order to prevent numerical failure
-    // It's a strange bug that might need a semaphore.
-    //    FILE* fd = fopen("/tmp/ceres.log", "a");
-    //    fprintf(fd, " ");
-    //    fclose(fd);
-    //   printf(" ");
-    //    printf("%lf %lf %lf, %lf %lf, %lf\n", X, Y,Z, p, q, res[0]);
     return true;
   }
 
@@ -89,18 +82,17 @@ class SphereFitter
 public:
   SphereFitter(double x=0, double y=0, double z=0)
   {
-    // Initial guesses
-    _center[0] = x;
-    _center[1] = y;
-    _center[2] = z;
+    // Set initial guess
+    _center[0] = x; _center[1] = y; _center[2] = z;
 
-    _options.max_num_iterations = 40;
-    //    _options.linear_solver_type = ceres::DENSE_QR;
-    _options.minimizer_progress_to_stdout = true;
+    _options.max_num_iterations = 50;
+    _options.linear_solver_type = ceres::DENSE_QR;
+    //    _options.minimizer_progress_to_stdout = true;
 
     /*
     _options.num_threads = 1; // TODO: for safety now, use just one
     _options.num_linear_solver_threads = 1;
+
     */
   }
 
@@ -130,15 +122,19 @@ public:
       AddResidualBlock( cloud->points[inlier[i]]);
   }
 
-  // Actually fit the sphere
-  bool FitSphere(double& x, double& y, double& z)
+  // Actually fit the sphere, also return the final cost
+  bool FitSphere(double* p)
   {
+    std::cout << "Initial guess at["<<_center[0]<<" ";
+    std::cout << _center[1]<<" "<< _center[2]<<"]\n";
+
     Solver::Summary summary;
     Solve(_options, &_problem, &summary);
 
-    x = _center[0];
-    y = _center[1];
-    z = _center[2];
+    // copy the results
+    assert(p != NULL);
+    // Note: std::copy's 2nd parameter is one step after the last element!
+    std::copy(&_center[0], &_center[3], &p[0]);
 
     std::cout << summary.BriefReport() << std::endl;
 
@@ -146,7 +142,7 @@ public:
 	summary.termination_type == GRADIENT_TOLERANCE ||
 	summary.termination_type == PARAMETER_TOLERANCE)
       {
-	std::cout << "Center found at ["<<x<<", "<<y<<", "<<z<<"]\n";
+	std::cout << "Center found at ["<<p[0]<<" "<<p[1]<<" "<<p[2]<<"]\n";
 	return summary.final_cost;
       }
     else
