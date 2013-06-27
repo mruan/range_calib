@@ -128,7 +128,7 @@ int main(int argc, char** argv)
 	  if(!be.ExtractBallCenter(center, inlierIdx))
 	    exit(1);
 
-	  showfittedSphere(fg, center[0], center[1], center[2]);
+	  //	  showfittedSphere(fg, center[0], center[1], center[2]);
 
 	  // Add it to the resource manager
 	  sensor->AddObservation(k, center);
@@ -146,6 +146,9 @@ int main(int argc, char** argv)
     }
   // Close the config file
   is.close();
+
+  // First solve a linear problem and use that for initial guess
+  //  rm.SolveLinearRigidTf();
   
   // Save the file for bundle adjustment
   ofstream os(argv[2], std::ofstream::out);

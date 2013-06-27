@@ -24,10 +24,21 @@ class Sensor
 public:
   Sensor() { InitParameters(); }
   Sensor(std::string _name):name(_name) { InitParameters(); }
-  Sensor(std::istream& is){ ReadBaseInfo(is); };
+  Sensor(std::istream& is){ InitParameters(); ReadBaseInfo(is); };
 
   ~Sensor(){delete q; delete t;}
   
+  void GetTransform(Eigen::Vector3f& origin, Eigen::Quaternionf& orientation)
+  {
+    origin(0) = static_cast<float>(t[0]);
+    origin(1) = static_cast<float>(t[1]);
+    origin(2) = static_cast<float>(t[2]);
+    orientation.w() = static_cast<float>(q[0]);
+    orientation.x() = static_cast<float>(q[1]);
+    orientation.y() = static_cast<float>(q[2]);
+    orientation.z() = static_cast<float>(q[3]);
+  }
+
   // Add one observation, passed as a pointer to an array
   virtual void AddObservation(int i, double* p) =0;
 
@@ -61,10 +72,10 @@ protected:
     is >> name >> token;
     assert(token == "Quaternion:");
     is >> q[0] >> q[1] >> q[2] >> q[3] >> token;
-    std::cout << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
+    //    std::cout << "Quaternion: " << q[0] <<" "<<q[1]<<" " <<q[2]<<" "<< q[3]<<std::endl;
     assert(token == "Translation:");
     is >> t[0] >> t[1] >> t[2];
-    std::cout << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
+    //    std::cout << "Translation: "<< t[0] <<" "<<t[1]<<" " <<t[2]<<std::endl;
   }
 
   // Parameters that will be optimized
@@ -119,7 +130,7 @@ public:
     LinearTfSolver lts;
     // TODO: Now assume no missing points, so copy the entire landmarks
     // vector is very inefficient
-    lts.SetSrcPoints(landmarks);
+    lts.SetRefPoints(landmarks);
     lts.SetTgtPoints(observations);
 
     // Warning, old values of t and q are erased

@@ -31,21 +31,18 @@ int main(int argc, char** argv)
   ceres::Problem problem;
   ceres::Solver::Options options;
 
-  if(!rm.ReadfromStream(ifs))
+  if(!rm.ReadFromStream(ifs))
     return -1;
   ifs.close();
 
-  LinearTfSolver ls;
-  //  ls.SetSrcPoints(rm.GetLandmarks());
-  // for each sensor in rm, solve a linear rigid transform
-  for (int i=0; i< 3; i++)
-    {
-      //    ls.SetTgtPoints(rm.GetSensorObservations(i));
-      double t[3], q[4];
-      ls.EstimateTfSVD(t, q);
-      rm.SetSensorTf(i, t, q);
-    }
+  // First solve a linear problem and use that for initial guess
+  rm.SolveLinearRigidTf();
+  
+  std::ofstream ofs("lsqr.out", std::ofstream::out);
+  rm.WriteToStream(ofs);
+  ofs.close();
 
+  // Then do a nlsqr fit
   rm.BuildCeresProblem(problem);
 
   // Minimizer options
@@ -60,9 +57,8 @@ int main(int argc, char** argv)
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
   std::cout << summary.FullReport() << std::endl;
-  
 
-  std::ofstream ofs("out.txt", std::ofstream::out);
+  ofs.open("nlsqr.out", std::ofstream::out);
   rm.WriteToStream(ofs);
   ofs.close();
 

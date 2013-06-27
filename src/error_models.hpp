@@ -33,7 +33,7 @@ namespace Euclidean3DError
       rp[0] += cam_tran[0];
       rp[1] += cam_tran[1];
       rp[2] += cam_tran[2];
-      
+      /*      
       std::cout<<"point [";
       std::cout<< std::setw(10) << std::setfill(' ')<< p[0]<<" ";
       std::cout<< std::setw(10) << std::setfill(' ')<< p[1]<<" ";
@@ -44,7 +44,7 @@ namespace Euclidean3DError
       std::cout<< std::setw(10) << std::setfill(' ')<< point[0] <<" "; 
       std::cout<< std::setw(10) << std::setfill(' ')<< point[1] << " ";
       std::cout<< std::setw(10) << std::setfill(' ')<< point[2]<<"]\n";
-      //      printf("point [%lf %lf %lf] projected to [%lf %lf %lf]\n", rp[0].a, rp[1].a, rp[2].a, point[0].a, point[1].a, point[2].a);
+      */
       residuals[0] = rp[0] - point[0];
       residuals[1] = rp[1] - point[1];
       residuals[2] = rp[2] - point[2];

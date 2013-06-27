@@ -39,25 +39,19 @@ public:
     _landmarks.push_back(Point3d(cx, cy, cz));
   }
 
-  // Accessor functions
-  const std::vector<Point3d>& GetLandmarks()
+  void GetSensorTransform(int i, Eigen::Vector3f& t, Eigen::Quaternionf& q)
   {
-    return _landmarks;
+    _sensors.at(i)->GetTransform(t, q);
   }
 
-  //  void GetSensorObservations(int i)
-  //  {
-  //    return _sensors[i]->observations;
-  //  }
-
-  void SetSensorTf(int i, double t[3], double q[4])
+  void SolveLinearRigidTf()
   {
-    std::copy(&t[0], &t[2], _sensors[i]->t);
-    std::copy(&q[0], &q[3], _sensors[i]->q);
+    for(int i=0; i< _sensors.size(); ++i)
+      _sensors[i]->SolveLinearTf(_landmarks);
   }
 
   // Basic I/O
-  bool ReadfromStream(std::istream& is)
+  bool ReadFromStream(std::istream& is)
   {
     std::string token; // just a buffer
     int num_sensors, num_landmarks;
@@ -164,4 +158,22 @@ public:
 private:
 
 };
+
+  const std::vector<Point3d>& GetLandmarks()
+  {
+    return _landmarks;
+  }
+
+  //  void GetSensorObservations(int i)
+  //  {
+  //    return _sensors[i]->observations;
+  //  }
+
+  void SetSensorTf(int i, double t[3], double q[4])
+  {
+    std::copy(&t[0], &t[2], _sensors[i]->t);
+    std::copy(&q[0], &q[3], _sensors[i]->q);
+  }
+
+
 */

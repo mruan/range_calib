@@ -42,11 +42,17 @@ target_link_libraries (show_pcd ${PCL_LIBRARIES})
 #add_executable (downsample src/downsample.cpp)
 #target_link_libraries (downsample ${PCL_LIBRARIES})
 
-add_executable (test_be src/test_be.cpp)
-target_link_libraries(test_be ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+#add_executable (test_be src/test_be.cpp)
+#target_link_libraries(test_be ${PCL_LIBRARIES} ${CERES_LIBRARIES})
 
-#add_executable (test_calib3D src/test_calib3D.cpp)
-#target_link_libraries(test_calib3D ${CERES_LIBRARIES})
+add_executable (test_calib3D src/test_calib3D.cpp)
+target_link_libraries(test_calib3D ${CERES_LIBRARIES})
 
 add_executable (test_pipeline src/test_pipeline.cpp)
 target_link_libraries(test_pipeline ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+
+add_executable (show_calib_result src/show_calib_result.cpp)
+target_link_libraries (show_calib_result ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+
+add_executable (test_f src/test_f.cpp)
+target_link_libraries (test_f ${PCL_LIBRARIES})

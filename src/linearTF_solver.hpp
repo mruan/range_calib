@@ -17,16 +17,16 @@
 class LinearTfSolver
 {
 public:
-  void SetSrcPoints(std::vector<Point3d>& in_cloud)
+  void SetRefPoints(std::vector<Point3d>& in_cloud)
   {
-    compute3DCentroid(in_cloud, centroid_src);
+    compute3DCentroid(in_cloud, centroid_ref);
     
-    demeanPointCloud(in_cloud, centroid_src, cloud_src_demean);
+    demeanPointCloud(in_cloud, centroid_ref, cloud_ref_demean);
   }
 
   void SetTgtPoints(std::vector<Point3d>& out_cloud)
   {
-    compute3DCentroid(out_cloud, centroid_src);
+    compute3DCentroid(out_cloud, centroid_tgt);
 
     demeanPointCloud(out_cloud, centroid_tgt, cloud_tgt_demean);
   }
@@ -34,8 +34,8 @@ public:
   // Assume t = double[3], q = double[4]
   void EstimateTfSVD(double* t, double* q)
   {
-    // Assemble the correlation matrix H = source * target'
-    Eigen::Matrix3d H = (cloud_src_demean * cloud_tgt_demean.transpose ()).topLeftCorner<3, 3>();
+    // Assemble the correlation matrix H = target * reference'
+    Eigen::Matrix3d H = (cloud_tgt_demean * cloud_ref_demean.transpose ()).topLeftCorner<3, 3>();
 
     // Compute the Singular Value Decomposition
     Eigen::JacobiSVD<Eigen::Matrix3d> svd (H, Eigen::ComputeFullU | Eigen::ComputeFullV);
@@ -49,13 +49,19 @@ public:
 	  v (i, 2) *= -1;
       }
 
+    //    std::cout<< "centroid_src: "<<centroid_src(0) <<" "<< centroid_src(1) <<" "<< centroid_src(2) << " "<< centroid_src(3)<<std::endl;
+    //    std::cout<< "centroid_tgt: "<<centroid_tgt(0) <<" "<< centroid_tgt(1) <<" "<< centroid_tgt(2) << " "<< centroid_tgt(3)<<std::endl;
+    
     Eigen::Matrix3d R = v * u.transpose ();
-    Eigen::Quaterniond Q(R);
-    q[0] = Q.w(); q[1] = Q.x(); q[2] = Q.y(); q[3] = Q.z();
 
-    const Eigen::Vector3d Rc (R * centroid_src.head<3> ());
-    Eigen::Vector3d T = centroid_tgt.head<3> () - Rc;
+    const Eigen::Vector3d Rc (R * centroid_tgt.head<3> ());
+    Eigen::Vector3d T = centroid_ref.head<3> () - Rc;
+
+    // Make sure these memory locations are valid
+    assert(t != NULL && q!=NULL);
+    Eigen::Quaterniond Q(R);
     t[0] = T(0);  t[1] = T(1);  t[2] = T(2);
+    q[0] = Q.w(); q[1] = Q.x(); q[2] = Q.y(); q[3] = Q.z();
   }
 
 private:
@@ -72,6 +78,7 @@ private:
 	centroid[0] += cloud[i].x;
 	centroid[1] += cloud[i].y;
 	centroid[2] += cloud[i].z;
+	//	printf("Point[%d]: %lf %lf %lf\n", cloud[i].x, cloud[i].y, cloud[i].z);
       }
     centroid[3] = 0.0;
     centroid /= static_cast<double>(cloud.size());
@@ -88,7 +95,7 @@ private:
     for(size_t i=0; i< npts; ++i)
       {
 	Eigen::Vector4d pt;
-	pt << cloud[i].x, cloud[i].y, cloud[i].z, 0,0;
+	pt << cloud[i].x, cloud[i].y, cloud[i].z, 0.0;
 	cloud_out.block<4,1>(0, i) = pt - centroid;
 
 	// Make sure zero out the 4th dimension (1 row, N cloumns)
@@ -96,8 +103,8 @@ private:
       }
   }
 
-  Eigen::Vector4d centroid_src;
+  Eigen::Vector4d centroid_ref;
   Eigen::Vector4d centroid_tgt;
-  Eigen::MatrixXd cloud_src_demean;
+  Eigen::MatrixXd cloud_ref_demean;
   Eigen::MatrixXd cloud_tgt_demean;
 };
