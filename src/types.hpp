@@ -27,3 +27,25 @@ typedef Point3<double> Point3d;
 typedef Point2<double> Point2d;
 typedef Point2<int>    Point2i;
 
+/*
+template <typename T>
+struct PointN
+{
+  PointN(int N):n(N)
+  {
+    p = new T[n];
+  }
+
+  T& operator[](int i)
+  {
+    if (i<n)
+      return p[i];
+    else
+      return T(0);
+  }
+
+  int n;
+  T* p;
+};
+
+*/

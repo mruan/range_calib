@@ -7,26 +7,67 @@
 
  */
 
+#pragma once
+
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+
+#include "types.hpp"// custom-defined points
+
+// This global variable must be declared once somewhere in main() function!
+extern const double g_Radius; // global target ball's radius
 
 class BallSelector
 {
 public:
-  BallSelector(double r, double err)
-    :_radius(r), _err(err){}
+  BallSelector(double err)
+    :_err(err){}
 
-  void SetInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
-  { _cloud = cloud; _w = cloud->width; _h = cloud->height; _flt_mask.resize(_w*_h); }
+  void SetInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int mask_v=1)
+  { 
+    _cloud = cloud; _w = cloud->width; _h = cloud->height; 
+    _mask.resize(_w*_h);
 
-  void GetCenter(double& x, double& y, double &z)
-  { x = _center[0];  y = _center[1]; z = _center[2]; }
+    // 1. Set mask to all true if you don't know any prior
+    // 2. Otherwise set it all false and set individual pixel later
+    std::fill(_mask.begin(), _mask.end(), mask_v);//TODO: inefficient
+  }
+
+  Point3d GetCenter()
+  { return _center; }
+
+  // This function should be called after the input cloud has been set
+  void SetPreMask(const Point3d& p, double f, int cx=-1, int cy=-1)
+  {
+    assert(_mask.size()>0);
+    if (cx==-1 && cy==-1)
+      {
+	cx = _cloud->width/2;
+	cy = _cloud->height/2;
+      }
+
+    int u = p.x/p.z*f + cx;
+    int v = p.y/p.z*f + cy;
+    int r = g_Radius/p.z*f; // TODO: use std::ceil?
+
+    for(int du=0; du <= r; ++du)
+      {
+	for(int dv = 0; dv<=r- du; ++dv)
+	  {//TODO: exception will be thrown here if it goes out of bound
+	    _mask.at((u-du) * _cloud->width + (v-dv)) = 1;
+	    _mask.at((u+du) * _cloud->width + (v-dv)) = 1;
+	    _mask.at((u-du) * _cloud->width + (v+dv)) = 1;
+	    _mask.at((u+du) * _cloud->width + (v+dv)) = 1;
+	  }
+      }
+  }
 
   const std::vector<bool>& GetMask()
-  { return _flt_mask; }
+  { return _mask; }
 
   // This is still a rather stupid implementation of the idea
   // which should have exploited neighbors in image space
+  // TODO: it might be sufficient to test only at the geometric center
   float ComputeScore()
   {
     double cx, cy, cz; // center of sphere
@@ -37,16 +78,14 @@ public:
     // for every point
     for(int i=0; i< _w*_h; ++i)
       {
-	// TODO: skip if _pre_mask is false;
-	/*
-	  if (!_pre_mask[i])
+	if (!_mask[i])
 	  continue;
-	*/
+
 	pcl::PointXYZ& p = _cloud->points[i];
 
 	// Assume the center is at this pixel
 	// but pushed back by a radius r;
-	cz = p.z + _radius;  cx = p.x;	cy = p.y;
+	cz = p.z + g_Radius;  cx = p.x;	cy = p.y;
       
 	// reset the count;
 	int this_count = 0;
@@ -84,9 +123,9 @@ public:
   
     // Assume the center is at this pixel
     // but pushed back by a radius r;
-    _center[2] = cz = p.z + _radius;
-    _center[0] = cx = p.x;
-    _center[1] = cy = p.y;  
+    _center.z = cz = p.z + g_Radius;
+    _center.x = cx = p.x;
+    _center.y = cy = p.y;  
 
     // TODO: Again this is stupid, only search the neighborhood
     for (int j=0; j < _w*_h; ++j)
@@ -95,7 +134,7 @@ public:
 	dx = q.x - cx;	dy = q.y - cy;	dz = q.z - cz;
    
 	if (isInlier(dx, dy, dz))
-	  _flt_mask[j] = true;
+	  _mask[j] = true;
       }
     return best_score;
   }
@@ -105,15 +144,14 @@ private:
   inline bool isInlier(double dx, double dy, double dz)
   {
     // |(dl/R)^2 - 1| < Error 
-    return fabs((dx*dx+dy*dy+dz*dz)/(_radius*_radius)-1.0) < _err;
-    //    return fabs(sqrt(x*x+y*y+z*z) - _radius) < _err;
+    return fabs((dx*dx+dy*dy+dz*dz)/(g_Radius*g_Radius)-1.0) < _err;
+    //    return fabs(sqrt(x*x+y*y+z*z) - g_Radius) < _err;
   }
   
-  double _radius;
   double _err; // TODO: _err can be a function of depth
   int _w, _h;
-  std::vector<bool> _flt_mask; // filter mask
+  std::vector<bool> _mask; // filter mask
   // std::vector<bool> _pre_mask;
-  double _center[3];
+  Point3d _center;
   pcl::PointCloud<pcl::PointXYZ>::Ptr _cloud;
 };

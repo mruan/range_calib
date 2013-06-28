@@ -56,3 +56,6 @@ target_link_libraries (show_calib_result ${PCL_LIBRARIES} ${CERES_LIBRARIES})
 
 add_executable (test_f src/test_f.cpp)
 target_link_libraries (test_f ${PCL_LIBRARIES})
+
+add_executable (test_2ndrun src/test_2ndrun.cpp)
+target_link_libraries(test_2ndrun ${PCL_LIBRARIES} ${CERES_LIBRARIES})

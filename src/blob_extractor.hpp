@@ -21,13 +21,13 @@ namespace BlobExtraction{
   typedef pcl::PointXYZ PointT;
   typedef pcl::PointCloud<PointT> CloudT;
 
-  float ball_score_fn(CloudT::Ptr cloud, double&x, double&y, double&z)
+  float ball_score_fn(CloudT::Ptr cloud, Point3d& center)
   {
-    // R = 0.1275, Err = err% error (relative to Radius)
-    BallSelector bs(0.1275, 0.2);
+    // Err = err% error (relative to Radius)
+    BallSelector bs(0.2);
     bs.SetInputCloud(cloud);
     float score = bs.ComputeScore();// the higher the more likely to be a ball;
-    bs.GetCenter(x,y,z);
+    center = bs.GetCenter();
     return score;
   }
 
@@ -49,7 +49,7 @@ namespace BlobExtraction{
       raw_cloud = in_cloud;
     }
 
-    bool ExtractBallCenter(double* center, std::vector<int>& inlierIdx)
+    bool ExtractBallCenter(Point3d& center, std::vector<int>& inlierIdx)
     {
       
       std::vector<pcl::PointIndices> cluster_idx;
@@ -75,7 +75,7 @@ namespace BlobExtraction{
 	  cloud_cluster->is_dense = true;
 
 	  // How likely does this blob contain the target ball
-	  this_score = ball_score_fn(cloud_cluster, x, y, z);
+	  this_score = ball_score_fn(cloud_cluster, center);
 	  printf("cluster %d, score= %f\n", j++, this_score);
 	  if (this_score > best_score)
 	    {
@@ -95,7 +95,7 @@ namespace BlobExtraction{
       printf("Best score is %f\n", best_score);
 
       // Refine the estimate with a nonlinear least square fit
-      SphereFitter sf(cx, cy, cz);// set initial guess
+      SphereFitter sf(center);// set initial guess
       sf.SetInputCloud(raw_cloud, best_it->indices);
       sf.FitSphere(center);
 

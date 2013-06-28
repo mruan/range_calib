@@ -34,14 +34,29 @@ public:
     _sensors.push_back(sensor_sptr);
   }
 
-  void AddLandmark(double cx, double cy, double cz)
+  void AddLandmark(Point3d& p)
   {
-    _landmarks.push_back(Point3d(cx, cy, cz));
+    _landmarks.push_back(p);
   }
 
   void GetSensorTransform(int i, Eigen::Vector3f& t, Eigen::Quaternionf& q)
   {
     _sensors.at(i)->GetTransform(t, q);
+  }
+
+  const Point3d& GetSensorObservation(int i, int j)
+  {
+    return _sensors.at(i)->observations.at(j);
+  }
+
+  void UpdateSensorObservation(int i, int j, Point3d& p)
+  {
+    _sensors.at(i)->observations.at(j) = p;
+  }
+
+  void UpdateLandmark(int i, Point3d& p)
+  {
+    _landmarks.at(i) = p;
   }
 
   void SolveLinearRigidTf()

@@ -14,9 +14,8 @@
 
 using namespace ceres;
 
-#ifndef RR // for radius
-#define RR 0.1275
-#endif
+// This global variable must be declared once somewhere in main() function!
+extern const double g_Radius; // global target ball's radius
 
 // The (Directional) Ray cost function from [Marek09]
 // It's robust for biased point cloud
@@ -45,16 +44,16 @@ public:
     double q2  = pow(y*Z-z*Y,2)+pow(z*X-x*Z,2)+pow(x*Y-y*X,2);
     double q   = std::sqrt(q2);
 
-    if (q < RR)
-      res[0] = p - std::sqrt(RR*RR - q2) - r;
+    if (q < g_Radius)
+      res[0] = p - std::sqrt(g_Radius*g_Radius - q2) - r;
     else
-      res[0] = std::sqrt((p-r)*(p-r) + (q-RR)*(q-RR));
+      res[0] = std::sqrt((p-r)*(p-r) + (q-g_Radius)*(q-g_Radius));
 
     if (jac != NULL && jac[0] != NULL)
       {
-	if (q < RR)
+	if (q < g_Radius)
 	  {
-	    double denom = std::sqrt(RR*RR - q2);
+	    double denom = std::sqrt(g_Radius*g_Radius - q2);
 	    jac[0][0] = x + (X - x*p) /denom;
 	    jac[0][1] = y + (Y - y*p) /denom;
 	    jac[0][2] = z + (Z - z*p) /denom;
@@ -62,7 +61,7 @@ public:
 	else
 	  {
 	    double pr = p - r;
-	    double qR = 1 - RR/q;
+	    double qR = 1 - g_Radius/q;
 	    jac[0][0] = (pr * x + qR *(X - x*p))/res[0];
 	    jac[0][1] = (pr * y + qR *(Y - y*p))/res[0];
 	    jac[0][2] = (pr * z + qR *(Z - z*p))/res[0];
@@ -80,10 +79,10 @@ private:
 class SphereFitter
 {
 public:
-  SphereFitter(double x=0, double y=0, double z=0)
+  SphereFitter(Point3d& init_guess)
   {
     // Set initial guess
-    _center[0] = x; _center[1] = y; _center[2] = z;
+    _center = init_guess;
 
     _options.max_num_iterations = 50;
     _options.linear_solver_type = ceres::DENSE_QR;
@@ -123,18 +122,16 @@ public:
   }
 
   // Actually fit the sphere, also return the final cost
-  bool FitSphere(double* p)
+  bool FitSphere(Point3d& p)
   {
-    std::cout << "Initial guess at["<<_center[0]<<" ";
-    std::cout << _center[1]<<" "<< _center[2]<<"]\n";
+    std::cout << "Initial guess at["<<_center.x<<" ";
+    std::cout << _center.y<<" "<< _center.z<<"]\n";
 
     Solver::Summary summary;
     Solve(_options, &_problem, &summary);
 
     // copy the results
-    assert(p != NULL);
-    // Note: std::copy's 2nd parameter is one step after the last element!
-    std::copy(&_center[0], &_center[3], &p[0]);
+    p = _center;
 
     std::cout << summary.BriefReport() << std::endl;
 
@@ -142,7 +139,7 @@ public:
 	summary.termination_type == GRADIENT_TOLERANCE ||
 	summary.termination_type == PARAMETER_TOLERANCE)
       {
-	std::cout << "Center found at ["<<p[0]<<" "<<p[1]<<" "<<p[2]<<"]\n";
+	std::cout << "Center found at ["<<p.x<<" "<<p.y<<" "<<p.z<<"]\n";
 	return summary.final_cost;
       }
     else
@@ -158,10 +155,10 @@ private:
   {
     // Robust loss function to deal with outliers
     LossFunction* lf = new HuberLoss(1.0);
-    _problem.AddResidualBlock(new RayCostFunction(p.x,p.y,p.z),lf,&_center[0]);
+    _problem.AddResidualBlock(new RayCostFunction(p.x,p.y,p.z),lf,&(_center.x));
   }
 
-  double _center[3];
+  Point3d _center;
   Solver::Options _options;
   Problem _problem;
 };

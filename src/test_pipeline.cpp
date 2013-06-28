@@ -26,6 +26,9 @@ void help(char* info)
   exit(1);
 }
 
+// Global variable used throughout all files:
+const double g_Radius = 0.1275; // radius of the target ball
+
 int main(int argc, char** argv)
 {
   if (argc < 3)
@@ -40,7 +43,8 @@ int main(int argc, char** argv)
 
   std::string token;
   is >> std::skipws >> token;
-  while(token=="#")
+  // Skip comments
+  while(token=="#") 
     {
       std::getline(is, token);
       is>> token;
@@ -123,7 +127,7 @@ int main(int argc, char** argv)
 	  // Extract ball center
 	  be.SetInputCloud(fg);
 
-	  double* center = new double[3];
+	  Point3d center;
 	  std::vector<int> inlierIdx;
 	  if(!be.ExtractBallCenter(center, inlierIdx))
 	    exit(1);
@@ -136,10 +140,8 @@ int main(int argc, char** argv)
 	  // First sensor is used as reference;
 	  // TODO: currently it must be a range sensor(x,y,z must be available)
 	  if (i==0)
-	    rm.AddLandmark(center[0], center[1], center[2]);
+	    rm.AddLandmark(center);
 
-	  // Whomever creates it also deletes it...
-	  delete [] center;
 	}
       // Add the entire sensor to the manager
       rm.AddSensor(sensor); 

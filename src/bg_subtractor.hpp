@@ -161,11 +161,11 @@ namespace BGS // background subtraction
 		continue;
 	      
 	      // This pixel is 1, but if any of my neighbor is 0, I become 0.
-	      int R = ceil(alpha / _bg->points[index].z);
+	      int win_radius = ceil(alpha / _bg->points[index].z);
 	      bool break_flag = false;
-	      for(int k= -R; k<= R; k++)
+	      for(int k= -win_radius; k<= win_radius; k++)
 		{
-		  for(int l=-R; l<=R; l++)
+		  for(int l=-win_radius; l<=win_radius; l++)
 		    {
 		      int r = i+k;
 		      int c = j+l;
@@ -208,10 +208,10 @@ namespace BGS // background subtraction
 		continue;
 	      
 	      // I'm 1, all my neighbors will become 1
-	      int R = ceil(alpha /_bg->points[index].z);
-	      for(int k= -R; k<= R; k++)
+	      int win_radius = ceil(alpha /_bg->points[index].z);
+	      for(int k= -win_radius; k<= win_radius; k++)
 		{
-		  for(int l=-R; l<=R; l++)
+		  for(int l=-win_radius; l<=win_radius; l++)
 		    {
 		      int r = i+k;
 		      int c = j+l;
@@ -234,7 +234,7 @@ namespace BGS // background subtraction
     
     // Erosion and Dilation
     // TODO: Currently deprecated
-    int Erode2D(int R = 1)
+    int Erode2D(int win_radius = 1)
     {
       int count = 0;
       std::vector<bool> temp(_mask.size(), 1);
@@ -254,7 +254,7 @@ namespace BGS // background subtraction
 	      if (_mask[i*_bg->width+j]) 
 		continue;
 	     	       
-	      for(int k= -R; k<= R; k++)
+	      for(int k= -win_radius; k<= win_radius; k++)
 		{
 		  int r = i+k;
 		  int c = j+k;
@@ -274,7 +274,7 @@ namespace BGS // background subtraction
       //      printf("%d left\n", count);
     }
 
-    int Dilate2D(int R = 1)
+    int Dilate2D(int win_radius = 1)
     {
       int count = 0;
       std::vector<bool> temp(_mask.size(), 0);
@@ -286,7 +286,7 @@ namespace BGS // background subtraction
 	      if (!_mask[i*_bg->width+j]) 
 		continue;
 	       
-	      for(int k= -R; k<= R; k++)
+	      for(int k= -win_radius; k<= win_radius; k++)
 		{
 		  int r = i+k;
 		  int c = j+k;

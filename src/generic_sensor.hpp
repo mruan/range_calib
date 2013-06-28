@@ -23,7 +23,13 @@ class Sensor
   friend class ResourceManager;
 public:
   Sensor() { InitParameters(); }
-  Sensor(std::string _name):name(_name) { InitParameters(); }
+  Sensor(std::string _name, int numObs=0):name(_name)
+  {
+    InitParameters(); 
+    observations.reserve(numObs);
+    landmark_idx.reserve(numObs);
+  }
+
   Sensor(std::istream& is){ InitParameters(); ReadBaseInfo(is); };
 
   ~Sensor(){delete q; delete t;}
@@ -39,8 +45,17 @@ public:
     orientation.z() = static_cast<float>(q[3]);
   }
 
-  // Add one observation, passed as a pointer to an array
-  virtual void AddObservation(int i, double* p) =0;
+  // Add one observation
+  void AddObservation(int i, Point3d& p)
+  {
+    landmark_idx.push_back(i);
+    observations.push_back(p);
+  }
+
+  void UpdateObservation(int i, Point3d& p)
+  {
+    observations[landmark_idx[i]] = p;
+  }
 
   // Solve a linear problem to find an initial guess
   virtual void SolveLinearTf(std::vector<Point3d>&) = 0;
@@ -83,6 +98,9 @@ protected:
   double* t;//translation
   std::string name;
 
+  std::vector<Point3d> observations;
+  std::vector<int> landmark_idx;
+
 private:
   void InitParameters()
   {
@@ -109,21 +127,11 @@ class RangeSensor: public Sensor
 {
 public:
   // Default constructor
-  RangeSensor(std::string _name, int numObs=0):Sensor(_name)
-  {
-    observations.reserve(numObs);
-    landmark_idx.reserve(numObs);
-  }
+  RangeSensor(std::string _name, int numObs=0):Sensor(_name, numObs){}
 
   // Initialize from an input stream
   RangeSensor(std::istream& is):Sensor(is)
   { ReadFromStream(is); }
-
-  void AddObservation(int i, double* p)
-  {
-    landmark_idx.push_back(i);
-    observations.push_back(Point3d(p[0], p[1], p[2]));
-  }
 
   void SolveLinearTf(std::vector<Point3d>& landmarks)
   {
@@ -183,8 +191,7 @@ public:
   }
 
 private:
-  std::vector<Point3d> observations;
-  std::vector<int> landmark_idx;
+  // error model and etc.
 };
 
 /*************************************************
@@ -197,13 +204,10 @@ public:
   Camera(std::istream& is){}
   Camera(std::string _name):Sensor(_name){}
 
-  void AddObservation(int i, double* p){}
   void ReadFromStream(std::istream& is){}
   void WriteToStream (std::ostream& os){}
   void SolveLinearTf(std::vector<Point3d>&){}
   void InitCeresProblem(ceres::Problem& prob, std::vector<Point3d>& landmarks, bool fixed){}
 private:
   //  double intrinsic[6];
-  std::vector<Point2d> observations;
-  std::vector<int> landmark_idx;
 };
