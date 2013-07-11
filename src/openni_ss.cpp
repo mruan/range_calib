@@ -100,7 +100,7 @@ public:
 	    if (key_status == SAVE_PCD)
 	      {
 		std::stringstream ss;
-		ss << name << ".pcd";
+		ss << name << counter<<".pcd";
 		pcl::io::savePCDFileASCII(ss.str(), *_cloud);
 		std::cerr<<"Saved "<< _cloud->points.size() << " data points to: "<< ss.str() << std::endl;
 		
