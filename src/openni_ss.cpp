@@ -175,7 +175,7 @@ public:
 		    this->aggregate_frames();
 
 		    std::stringstream ss;
-		    ss << name << counter<<".pcd";
+		    ss << name   <<".pcd"; //<< counter
 		    //		    pcl::io::savePCDFileASCII(ss.str(), *_cloud);
 		    //		    pcd_writer.writeBinary(ss.str(), *_temp);
 		    pcd_writer.writeASCII(ss.str(), *_temp);
