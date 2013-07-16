@@ -177,8 +177,8 @@ public:
 		    std::stringstream ss;
 		    ss << name   <<".pcd"; //<< counter
 		    //		    pcl::io::savePCDFileASCII(ss.str(), *_cloud);
-		    //		    pcd_writer.writeBinary(ss.str(), *_temp);
-		    pcd_writer.writeASCII(ss.str(), *_temp);
+		    pcd_writer.writeBinary(ss.str(), *_temp);
+		    //		    pcd_writer.writeASCII(ss.str(), *_temp);
 		    std::cerr<<"\nSaved "<< _cloud->points.size() << " data points to: "<< ss.str() << std::endl;
 		    
 		    ++counter;
