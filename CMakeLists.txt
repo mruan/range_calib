@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(extract_circle)
 
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 # I don't wanna see all the warnings about PCL-SHOT
 # enable c0x support (shared_ptr and etc.)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -g -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wno-deprecated-declarations")
 
 # I built PCL from source. You may want to comment out this set(PCL_DIR) if
 # you got pcl from apt-get
@@ -59,3 +60,5 @@ target_link_libraries (openni_ss ${PCL_LIBRARIES})
 
 #add_executable (test_2ndrun src/test_2ndrun.cpp)
 #target_link_libraries(test_2ndrun ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+
+add_subdirectory(test)
